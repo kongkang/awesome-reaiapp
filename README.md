@@ -73,6 +73,6 @@ plugins/<slug>/
 
 三个本地技能位于 `skills/reaiapp-development/`、`skills/reaiapp-design/`、`skills/reaiapp-review/`，引用本仓库文档及统一审查清单。`/skills/` 暂时精确忽略以防误公开，未来公开须单独复核；未安装到全局，也未上传。
 
-项目内说“发布到线上”时，先使用 [reaiapp-development](skills/reaiapp-development/SKILL.md) 的发布入口及[本地发布记录](skills/reaiapp-development/references/deployment.md)。2026-10-03 已按本次用户授权将中英文介绍网站与整合文档发布到 `open.reai.com`，网站主机为 `root@cn.reai.com`（node3），[发布说明](open-website/deploy/README.md)记录目录、产物与回滚。插件送审/签名/上架仍须单独核目标；网站发布不代表插件迁移产物获批。入口与记录随 `/skills/` 保持本地忽略，公开须另行复核。
+项目内说“发布到线上”时，先使用 `skills/reaiapp-development/SKILL.md`（本地忽略，不在公开仓库中） 的发布入口及`skills/reaiapp-development/references/deployment.md`（本地记录）。2026-10-03 已按本次用户授权将中英文介绍网站与整合文档发布到 `open.reai.com`，网站主机为 `root@cn.reai.com`（node3），[发布说明](open-website/deploy/README.md)记录目录、产物与回滚。插件送审/签名/上架仍须单独核目标；网站发布不代表插件迁移产物获批。入口与记录随 `/skills/` 保持本地忽略，公开须另行复核。
 
 公开前检查仍有待处理项：仓库自身许可证、最终依赖及图标署名、内部规范的公开范围、文档站开发工具升级和真实 Host 验收。原审计 404 已定位为镜像未实现接口；npm 官方审计中 15 个插件与共享工具未返回已知告警，当前文档站返回 4 条 Vite/esbuild 开发服务告警。隔离升级候选已通过冻结安装、审计和静态构建，尚未采用到本目录。源码检查未发现已确认的真实密钥，但这不是完整 Host 安全审计。详细本地证据与待决定选项见 `.migration-review/`（忽略，不发布）。
