@@ -1,0 +1,34 @@
+# 主工作区与 worktree 工作流
+
+**永远不允许修改主工作区的分支，所有工作都要在 worktree 里完成。**
+
+主工作区 `/Users/kongkang/Developer/awesome-reaiapp` 永久固定 `main`。代码、文档、项目提示词、测试、构建、暂存和提交使用本任务独占的 Git worktree。不要借用其他在途任务的 worktree。
+
+## 开始任务
+
+1. 只读检查主工作区分支、工作状态和所有 worktree。检查是否存在未完成的 merge/rebase。
+2. 主工作区不是 main 时停止并报告。不要自行执行 switch、checkout 或改为 detached HEAD。
+3. 主工作区存在本地修改时，保留内容和当前分支。不要自动 stash、reset、clean、覆盖或删除文件。
+4. 为任务创建独立 worktree，或复用已确认属于本任务的 worktree。任务分支使用 `codex/` 前缀。基线采用核验后的 `origin/main`，继续现有 PR 时采用该 PR 分支。
+5. 后续编辑与所有验证命令的工作目录必须是该 worktree。主工作区只读使用。
+
+## PR 与合并
+
+1. 只暂存本任务的明确路径。检查暂存差异、公开范围、凭据、构建产物和无关文件。
+2. 在 worktree 中提交、按用户授权 push 并创建 PR。处理审查反馈并完成对应检查。
+3. 只在用户授权且仓库门禁满足时合并 PR。检查 PR 实际状态及合并 SHA，不把 merge 命令返回等同于完成。
+4. 确认主工作区仍在 main。无关本地修改继续保留。存在阻塞同步的文件时停止，报告路径；本次用户已确认的移交文件可以先完整备份并核验摘要再处理冲突。
+5. PR 已合并且同步获授权后，只执行 fetch 和 `git -c submodule.recurse=false merge --ff-only origin/main`。不能快进时停止，不 rebase、不强推、不切分支。
+6. 检查本地 HEAD、origin/main 与远端 refs/heads/main 一致，且合并 SHA 已进入本地历史。
+
+## 文件保护与结束
+
+备份必须保留原字节、文件路径和摘要。已备份不等于可以删除其他任务的数据。只处理本任务已确认的路径，发现新的冲突或并行修改时停止并报告。
+
+worktree 清理遵守用户对删除数据的授权要求。确认没有未保存内容、无人占用，并先退出其目录。不要删除其他任务的 worktree。
+
+## 参考与本次纠正
+
+规则参考 ai-vibe-board 的 `AGENTS.md:23`、`CLAUDE.md:57` 和 `docs/worktree-workflow.md:7`，通过 ask-project 只读核对。同步约束采用 PR 合并后快进，不采用其他项目可能存在的直接推送 main 例外。
+
+2026-10-03 用户明确要求将此前错误切换的主工作区恢复为 main。该一次性纠正不授权未来切换主工作区分支。已发布网站的源码提交、审查与合并准备在独立 worktree 完成；未完成的插件迁移继续保留。

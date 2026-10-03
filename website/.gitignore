@@ -1,0 +1,6 @@
+node_modules/
+.vitepress/dist/
+.vitepress/cache/
+dist/
+# 构建前从 platform/docs/ 同步而来，事实源在那边
+src/
