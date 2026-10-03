@@ -1,0 +1,6 @@
+{
+  "codes": [
+    "MANIFEST_SCHEMA_INVALID"
+  ],
+  "note": "required=true 必须写明缺目标会禁用哪个 contribution"
+}

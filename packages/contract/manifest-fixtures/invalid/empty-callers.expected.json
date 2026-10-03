@@ -1,0 +1,6 @@
+{
+  "codes": [
+    "MANIFEST_SCHEMA_INVALID"
+  ],
+  "note": "没有调用方的 Command 永远不会被触发"
+}

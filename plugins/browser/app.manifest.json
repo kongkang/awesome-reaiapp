@@ -1,0 +1,181 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.browser",
+  "version": "1.0.4-dev.2",
+  "publisherId": "4d8a4ddb-2293-4b11-9ef4-3f24f117998c",
+  "name": "浏览器",
+  "description": "内置多标签浏览器：Agent 可以受控地打开网页、观察与点击，用户在半屏抽屉里全程可见",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Utilities",
+    "tagline": "让 Agent 的每一步网页操作都看得见。",
+    "longDescription": "内置受管浏览器：多标签、地址栏导航、后退/前进/刷新，Agent 经浏览器引擎窄口打开网页、观察元素、点击与填写，全部操作以半屏抽屉呈现给用户。只放行 https（本机开发地址可用 http），新窗口与下载默认拒绝，网页数据与主应用隔离。",
+    "capabilities": [
+      {
+        "label": "多标签浏览",
+        "detail": "地址栏、后退/前进/刷新、转系统浏览器"
+      },
+      {
+        "label": "Agent 操作面",
+        "detail": "打开网页、观察元素、点击、填写、按键"
+      },
+      {
+        "label": "需要的权限",
+        "detail": "安装并启用后生效；无麦克风等系统权限"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#2563eb,#60a5fa)",
+        "caption": "半屏抽屉里的多标签浏览器与 Agent 活动条",
+        "hasVideo": false
+      }
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.19.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "storage.kv@1",
+      "commands@1",
+      "browser.engine@1",
+      "metadata.i18n@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadata.name"
+      },
+      {
+        "target": "description",
+        "key": "metadata.description"
+      },
+      {
+        "target": "surface.title",
+        "id": "main",
+        "key": "metadata.main"
+      },
+      {
+        "target": "sidebar.label",
+        "id": "browser",
+        "key": "metadata.sidebar"
+      },
+      {
+        "target": "command.title",
+        "id": "com.reai.browser.open",
+        "key": "metadata.openCommand"
+      }
+    ]
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "state",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "1.0.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "浏览器"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "browser",
+        "label": "浏览器",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "commands": [
+      {
+        "id": "com.reai.browser.open",
+        "componentId": "ui",
+        "title": "打开浏览器抽屉",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "ok"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "timeoutMs": 5000,
+        "supportsCancellation": false,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host",
+          "user"
+        ]
+      }
+    ],
+    "intents": []
+  },
+  "oauthAppId": "469nxYjGdznLxiQwuUgTIPWl2c2b3UOC"
+}

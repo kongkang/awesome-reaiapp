@@ -1,0 +1,163 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.computer",
+  "version": "0.1.1-dev.1",
+  "publisherId": "reai",
+  "name": "电脑操控",
+  "description": "Computer Use：授权后 Agent 可以看屏幕、移动鼠标、点击与输入，插件内建权限引导、紧急停止与全程操作审计；视觉决策走登录账号的云端模型网关",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Utilities",
+    "tagline": "让 Agent 在你的眼皮底下操作这台电脑。",
+    "longDescription": "Computer Use 第一版：本地闭环。用户授权（辅助功能 + 屏幕录制，均在系统设置里手动开启）后，Agent 通过引擎窄口截屏、识别界面、移动鼠标、点击与输入。插件提供权限引导、紧急停止按钮、每步操作的审计流，以及一个连接视觉大模型（GLM 等 OpenAI 兼容端点）的演示控制台——例如「给文件传输助手发一条消息」。引擎侧有速率上限、密码管理器与宿主自身的目标护栏。",
+    "capabilities": [
+      {
+        "label": "看屏幕",
+        "detail": "整屏/窗口截图（需屏幕录制权限，仅检测与引导，永不替用户请求）"
+      },
+      {
+        "label": "操作电脑",
+        "detail": "鼠标移动/点击/拖拽/滚动、按键与文字输入（需辅助功能权限）"
+      },
+      {
+        "label": "安全线",
+        "detail": "紧急停止、注入速率上限、密码管理器与 Driver 自身窗口护栏、全程审计"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#0ea5e9,#22d3ee)",
+        "caption": "权限引导 + 任务控制台 + 操作审计",
+        "hasVideo": false
+      }
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    },
+    {
+      "platform": "windows",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.5.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "storage.kv@1",
+      "commands@1",
+      "computer.engine@1",
+      "cloud.model.invoke@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "id": "cloud.model.invoke@1",
+      "purpose": "把屏幕截图与任务指令发给云端视觉大模型（经登录账号的网关）以识别界面并决定下一步操作",
+      "required": true
+    }
+  ],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "state",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "0.1.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "电脑操控"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "computer",
+        "label": "电脑操控",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "commands": [
+      {
+        "id": "com.reai.computer.stop",
+        "componentId": "ui",
+        "title": "紧急停止电脑操控",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "stopped"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "timeoutMs": 5000,
+        "supportsCancellation": false,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host",
+          "user"
+        ]
+      }
+    ],
+    "intents": []
+  }
+}

@@ -1,0 +1,311 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.codex-link",
+  "version": "0.5.12",
+  "publisherId": "4d8a4ddb-2293-4b11-9ef4-3f24f117998c",
+  "oauthAppId": "MWlGsyT9YXxuQ5IkVaIQxBscQaFfCc3b",
+  "name": "Codex Link",
+  "description": "把 AI Board 01 变成 Codex 的控制面——审批、状态与会话",
+  "icon": "assets/icon.png",
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadata.name"
+      },
+      {
+        "target": "description",
+        "key": "metadata.description"
+      },
+      {
+        "target": "surface.title",
+        "id": "main",
+        "key": "metadata.surface"
+      },
+      {
+        "target": "sidebar.label",
+        "id": "codex-link",
+        "key": "metadata.sidebar"
+      },
+      {
+        "target": "titlebarAction.label",
+        "id": "new-task",
+        "key": "metadata.newTaskLabel"
+      },
+      {
+        "target": "titlebarAction.text",
+        "id": "new-task",
+        "key": "metadata.newTaskText"
+      },
+      {
+        "target": "command.title",
+        "id": "com.reai.codex-link.new-task",
+        "key": "metadata.newTaskLabel"
+      },
+      {
+        "target": "command.title",
+        "id": "com.reai.codex-link.approve",
+        "key": "metadata.approve"
+      },
+      {
+        "target": "command.title",
+        "id": "com.reai.codex-link.deny",
+        "key": "metadata.deny"
+      }
+    ]
+  },
+  "storeListing": {
+    "category": "Agents",
+    "tagline": "把 AI Board 01 变成 Codex 的控制面——审批、会话与 Skills",
+    "longDescription": "把键盘的旋钮和拨杆变成 Codex agent 的控制面：审批它的每一步动作、查看它的会话状态与思考进度、一键切换工作模式。需要本机运行 Codex app-server 才能连上——这是一个 agent 协议消费者，本身不做推理。",
+    "capabilities": [
+      {
+        "label": "侧栏会多一项",
+        "detail": "Codex Link"
+      },
+      {
+        "label": "硬件键位",
+        "detail": "拨杆三档由统一键盘映射配置，插件不重复定义"
+      },
+      {
+        "label": "需要的权限",
+        "detail": "本机 Codex app-server 进程读写（agent.codex@1）；点「选文件夹…」时弹系统面板让你挑工作目录（system.folder-pick@1）"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#4a4ac8,#6b6bd8)",
+        "caption": "连接状态卡片：审批待办一眼可见",
+        "hasVideo": true
+      },
+      {
+        "gradient": "linear-gradient(135deg,#3a3aa8,#5a5ac8)",
+        "caption": "会话列表：哪个 thread 在 Thinking"
+      },
+      {
+        "gradient": "linear-gradient(135deg,#5a4ad0,#7a6ae8)",
+        "caption": "Skills 列表：查看当前可用的 Codex 能力"
+      }
+    ],
+    "phaseOneCommitments": [
+      "把 Skill 变成 Action 层的快捷方式：挂上去，按 Action 键直接使",
+      "快速创建对话：结合拨杆，一步开一个新任务",
+      "交互提醒：Codex 里有对话在等你时，进 Tab 层，一按就跳过去处理"
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.19.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "commands@1",
+      "storage.kv@1",
+      "agent.codex@1",
+      "activation.startup@1",
+      "system.folder-pick@1",
+      "titlebar.action@1",
+      "metadata.i18n@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "startup",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "thread-state",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "0.2.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "Codex Link"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "codex-link",
+        "label": "Codex Link",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarActions": [
+      {
+        "id": "new-task",
+        "label": "新建 Codex 任务",
+        "icon": "plus",
+        "text": "新任务",
+        "intent": {
+          "type": "new-task"
+        }
+      }
+    ],
+    "intents": [],
+    "actionItems": {
+      "componentId": "ui"
+    },
+    "eventSubscriptions": [],
+    "acceptsActionContext": [],
+    "commands": [
+      {
+        "id": "com.reai.codex-link.new-task",
+        "componentId": "ui",
+        "title": "新建 Codex 任务",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "effort": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "skillName": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "promptPrefix": {
+              "type": "string",
+              "maxLength": 256
+            }
+          }
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ],
+          "additionalProperties": false
+        },
+        "timeoutMs": 10000,
+        "supportsCancellation": false,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host"
+        ]
+      },
+      {
+        "id": "com.reai.codex-link.approve",
+        "componentId": "ui",
+        "title": "批准当前审批",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ],
+          "additionalProperties": false
+        },
+        "timeoutMs": 10000,
+        "supportsCancellation": true,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host"
+        ]
+      },
+      {
+        "id": "com.reai.codex-link.deny",
+        "componentId": "ui",
+        "title": "拒绝当前审批",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ],
+          "additionalProperties": false
+        },
+        "timeoutMs": 10000,
+        "supportsCancellation": true,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host"
+        ]
+      }
+    ]
+  }
+}

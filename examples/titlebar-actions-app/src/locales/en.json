@@ -1,0 +1,5 @@
+{
+  "help": "Move the pointer to the title bar and click the “+” action to the left of the notification bell.",
+  "idle": "Waiting for a title bar action",
+  "clicked": "clicked · Title bar action received by the extension"
+}

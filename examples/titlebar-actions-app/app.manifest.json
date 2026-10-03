@@ -1,0 +1,74 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.example.titlebar-actions-demo",
+  "version": "1.0.2",
+  "publisherId": "example",
+  "name": "Titlebar Actions Demo",
+  "description": "第三方插件标题栏动作合同的最小可运行示例",
+  "icon": "assets/icon.png",
+  "targets": [
+    { "platform": "macos", "architectures": ["aarch64", "x86_64"] },
+    { "platform": "windows", "architectures": ["aarch64", "x86_64"] }
+  ],
+  "hostApi": { "range": ">=1.2.0 <2.0.0" },
+  "requires": {
+    "hostCapabilities": ["surface.main@1", "sidebar.item@1", "titlebar.action@1"],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": { "policyVersion": 1, "endpoints": [] },
+  "billing": { "mode": "none" },
+  "data": { "privateStores": [], "imports": [], "exports": [] },
+  "dataCompatibility": { "rollbackFloor": "1.0.0" },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "Titlebar Actions Demo"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "titlebar-actions-demo",
+        "label": "Titlebar Demo",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarActions": [
+      {
+        "id": "mark-clicked",
+        "label": "触发示例动作",
+        "icon": "plus",
+        "text": "运行",
+        "showOnTitlebarHover": true,
+        "intent": { "type": "mark-clicked" }
+      }
+    ],
+    "commands": [],
+    "intents": []
+  }
+}

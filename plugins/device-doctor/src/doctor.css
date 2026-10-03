@@ -1,0 +1,82 @@
+/* 设备诊断助手 —— 界面壳样式。对话流 / 工作卡样式来自 @reai/agent-ui，
+ * 这里只补布局与少量品牌色。 */
+
+html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+.plugin-main-frame {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding-top: var(--reai-plugin-titlebar-safe-top, 44px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main-body { flex: 1; min-height: 0; }
+
+.device-doctor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--agent-bg, #f7f8fa);
+}
+
+.device-doctor-header {
+  padding: 12px 20px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.device-doctor-note-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.device-doctor-note {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.device-doctor-conversation {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.device-doctor-conversation .agent-conversation-stream {
+  height: 100%;
+}
+
+.device-doctor-dock {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.device-doctor-dock .agent-composer-dock {
+  flex: 1;
+}
+
+.device-doctor-cancel {
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 10px;
+  background: transparent;
+  padding: 0 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.device-doctor-cancel:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.device-doctor-cancel[hidden] {
+  display: none;
+}

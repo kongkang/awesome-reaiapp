@@ -1,0 +1,21 @@
+/** `@reai/app-test/v1` —— 合同测试工具公开面。 */
+
+export { MockHost, MockHostError, flush } from "./mock-host";
+export type {
+  AppManifestLike,
+  DeveloperPlatformMockHandler,
+  MockHostOptions,
+  SurfaceObservation,
+} from "./mock-host";
+export { defineContractSuite } from "./contract";
+export type {
+  CheckResult,
+  ContractExpectations,
+  ContractResult,
+  ContractRuntime,
+  ContractScenario,
+  ContractSuite,
+  ContractSuiteConfig,
+  ScenarioApi,
+  SurfaceMatchers,
+} from "./contract";

@@ -1,0 +1,222 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.pi-agent",
+  "version": "1.0.4-dev.2",
+  "publisherId": "4d8a4ddb-2293-4b11-9ef4-3f24f117998c",
+  "name": "Pi Agent",
+  "description": "查看 Driver App 内 Pi Agent 的会话、能力与新会话模型设置",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Official",
+    "tagline": "看清 App 内的 Pi 正在做什么",
+    "longDescription": "按调用插件查看 Driver App 内置 Pi Agent 的会话、工作目录、模型、系统提示词、Skills 与 Tools，并决定之后新会话使用的稳定模型档位。它不会读取电脑上独立安装的 Pi 或 DSH。",
+    "capabilities": [
+      {
+        "label": "侧栏会多一项",
+        "detail": "Pi Agent"
+      },
+      {
+        "label": "管理范围",
+        "detail": "仅 Driver App 内置 Pi"
+      },
+      {
+        "label": "可修改内容",
+        "detail": "之后新会话的模型档位"
+      }
+    ],
+    "screenshots": []
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.18.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "titlebar.action@1",
+      "agent.pi-management@1",
+      "metadata.i18n@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.2",
+  "requirements": [
+    {
+      "id": "runtime.pi",
+      "displayName": "ReAI Pi Runtime",
+      "kind": "managed_executable",
+      "componentId": "ui",
+      "required": false,
+      "requiredFor": [
+        "capability:agent.pi-management@1"
+      ],
+      "platforms": [
+        "macos"
+      ],
+      "channels": [
+        "direct"
+      ],
+      "version": {
+        "constraint": ">=0.84.3 <0.85.0"
+      },
+      "probe": {
+        "type": "host_registered",
+        "id": "pi-agent-v1"
+      },
+      "provision": {
+        "mode": "host_managed_resource",
+        "resourceId": "com.reai.runtime.pi",
+        "installPolicy": "optional_on_demand",
+        "requiresConsent": true
+      },
+      "failure": {
+        "componentState": "degraded",
+        "featureState": "blocked",
+        "hostState": "satisfied"
+      },
+      "remediation": {
+        "action": "install_managed_resource",
+        "label": "下载并安装 Pi 运行组件",
+        "restartRequired": false
+      }
+    }
+  ],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "1.0.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "Pi Agent"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "pi-agent",
+        "label": "Pi Agent",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarActions": [
+      {
+        "id": "settings",
+        "label": "Pi Agent 设置",
+        "icon": "settings",
+        "text": "设置",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "open-settings"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "id": "com.reai.pi-agent.back-to-root",
+        "componentId": "ui",
+        "title": "返回 Pi Agent 主页",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "timeoutMs": 3000,
+        "supportsCancellation": false,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host"
+        ]
+      }
+    ],
+    "scheduledTasks": []
+  },
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadata.name"
+      },
+      {
+        "target": "description",
+        "key": "metadata.description"
+      },
+      {
+        "target": "surface.title",
+        "id": "main",
+        "key": "metadata.surfaces.item0"
+      },
+      {
+        "target": "sidebar.label",
+        "id": "pi-agent",
+        "key": "metadata.sidebar.item0"
+      },
+      {
+        "target": "command.title",
+        "id": "com.reai.pi-agent.back-to-root",
+        "key": "metadata.commands.item0"
+      },
+      {
+        "target": "titlebarAction.label",
+        "id": "settings",
+        "key": "metadata.actionLabels.item0"
+      },
+      {
+        "target": "titlebarAction.text",
+        "id": "settings",
+        "key": "metadata.actionText.item0"
+      }
+    ]
+  },
+  "oauthAppId": "kzoEfKyQ6JbKXmPEQ2SkOYoi34MvMH46"
+}

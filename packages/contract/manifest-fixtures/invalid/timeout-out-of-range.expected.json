@@ -1,0 +1,6 @@
+{
+  "codes": [
+    "MANIFEST_SCHEMA_INVALID"
+  ],
+  "note": "Command 超时上限 30 秒"
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@reai/app-cli",
+  "version": "1.3.0-upload.1",
+  "private": true,
+  "type": "module",
+  "description": "reai-app —— ReAI App 的构建、校验、合同测试与打包工具",
+  "files": [
+    "src"
+  ],
+  "bin": {
+    "reai-app": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./validate": "./src/validate.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@reai/app-contract": "1.24.0",
+    "@reai/app-sdk": "1.24.0",
+    "@reai/app-test": "1.2.0",
+    "@happy-dom/global-registrator": "^20.0.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.0"
+  }
+}

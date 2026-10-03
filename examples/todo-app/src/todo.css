@@ -1,0 +1,649 @@
+/* 配色**只认宿主注入的 token**（driver-v2 README「主题契约」）：宿主在 bootstrap 时把
+   当前主题的全量 token 写进 `:root`，切换主题时直接重写这些变量。所以这里不能有
+   `prefers-color-scheme` —— 那跟的是**系统**深浅色，而宿主跟的是用户在设置里选的偏好，
+   两者一分叉就会出现「侧栏浅色、插件深色」。fallback 值只服务于脱离宿主的本地预览。 */
+:root {
+  color-scheme: light dark;
+  font-family: "Avenir Next", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  color: var(--text-primary, #1c1c2e);
+  background: var(--bg, #f4f3f9);
+  font-synthesis: none;
+}
+
+html, body, #app { width: 100%; height: 100%; margin: 0; }
+body { overflow: hidden; }
+button, input { font: inherit; }
+button { color: inherit; }
+
+.plugin-main-frame {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding-top: var(--reai-plugin-titlebar-safe-top, 44px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main-body { flex: 1; min-height: 0; }
+
+.todo-app {
+  --todo-accent: var(--accent, #5c5ce0);
+  --todo-accent-soft: color-mix(in srgb, var(--todo-accent) 11%, transparent);
+  /* fallback 一律照抄宿主浅色主题的真值（tokens.rs），这样脱离宿主的本地预览
+     和真机浅色是同一个样子，不会出现「预览里对、装进 App 就变」。 */
+  --todo-canvas: var(--bg, #f4f3f9);
+  --todo-card: var(--card-bg, rgba(255, 255, 255, .8));
+  /* 浮层（详情抽屉、助理抽屉、新增专注层）统一用宿主给面板准备的 `--panel-bg`：
+     它比卡片更实，压在半透明蒙版上时背后的日程流不会透出来。 */
+  --todo-panel: var(--panel-bg, rgba(255, 255, 255, .9));
+  /* 宿主没有「比卡片再深/浅一档」的 token，就从卡片色掺一点文字色派生，跟着主题走。 */
+  --todo-card-soft: color-mix(in srgb, var(--todo-text) 5%, var(--todo-card));
+  --todo-text: var(--text-primary, #1c1c2e);
+  --todo-muted: var(--text-secondary, #6b6b80);
+  --todo-faint: color-mix(in srgb, var(--todo-text) 44%, transparent);
+  --todo-line: color-mix(in srgb, var(--todo-text) 10%, transparent);
+  --todo-line-strong: color-mix(in srgb, var(--todo-text) 16%, transparent);
+  --todo-warning: var(--warn, #b3701a);
+  --todo-warning-soft: var(--warn-soft, rgba(179, 112, 26, .09));
+  --todo-success: var(--bound, #1f9d55);
+  /* 以下两组是宿主 token 表里真实不存在的缺口（design-acceptance DS-01 允许 waivable
+     标记的场景），不是偷懒抄近道：宿主没有「强调色底上该用什么前景色」这种 token
+     （--accent 系是纯色块，不像 --warn 系自带 soft 搭配），也没有「阴影/蒙版用的近黑基色」
+     token（--bar-shadow/--card-shadow 是成套的完整 box-shadow 字符串，不是可拆开单独取用
+     的颜色）。与其伪造一个宿主并不提供的 var() 名字去掩人耳目，不如老实声明成本插件自己的
+     派生常量，交给验收按 waivable 处理。 */
+  --todo-on-accent: #fff;
+  --todo-scrim-ink: #101018;
+  --todo-shadow-ink: #151525;
+  /* 宿主 token 不再往回重映射：agent-ui 组件直接吃 `:root` 上宿主注入的那一套，
+     和本页同源同主题。（若重映射回来，就会和上面几行互相引用，CSS 判定为循环后这些变量
+     一律作废——连 `var()` 的 fallback 都不会兜住，用到它们的属性直接失效。） */
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  color: var(--todo-text);
+  background: var(--todo-canvas);
+}
+
+.todo-app *, .todo-app *::before, .todo-app *::after { box-sizing: border-box; }
+.todo-app button { appearance: none; border: 0; background: none; cursor: pointer; }
+.todo-app button:focus-visible, .todo-app input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--todo-accent) 32%, transparent);
+  outline-offset: 2px;
+}
+
+/* 标题属于 main-body；Host Title Bar 的安全区只在 .plugin-main-frame 消费一次。 */
+.todo-topbar {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 16px;
+  padding: 0 clamp(22px, 3vw, 42px) 12px;
+}
+.todo-topbar-heading { min-height: 40px; display: flex; align-items: center; gap: 12px; }
+.todo-topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.todo-topbar-status { grid-column: 1 / -1; margin: -4px 0 0; color: var(--todo-muted); font-size: 10px; }
+
+.todo-identity-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--todo-on-accent);
+  background: var(--todo-accent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--todo-accent) 24%, transparent);
+}
+.todo-topbar-heading h1 { margin: 0; font-size: 21px; line-height: 1.05; letter-spacing: -.03em; }
+.todo-topbar-heading p { margin: 4px 0 0; color: var(--todo-muted); font-size: 11.5px; }
+
+/* 「日程 / 列表」视角切换 seg（对稿 .seg / tdViewSeg）：同一块地方换一种看法，
+   两档互斥；当前档浮起为卡片色，另一档安静地待在槽里。 */
+.todo-view-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--todo-line);
+}
+.todo-view-seg-btn {
+  padding: 4px 12px;
+  border-radius: 10px;
+  color: var(--todo-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.todo-view-seg-btn.is-active {
+  color: var(--todo-text);
+  background: var(--todo-card);
+  box-shadow: var(--bar-shadow, 0 1px 8px rgba(92, 92, 224, .06));
+}
+.todo-view-seg-btn:not(.is-active):hover { color: var(--todo-text); }
+
+.todo-body { position: relative; min-height: 0; flex: 1; min-width: 0; display: flex; }
+.todo-layout {
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(292px, 3fr);
+  gap: clamp(14px, 2vw, 24px);
+  padding: 0 clamp(22px, 3vw, 42px) 24px;
+}
+.todo-agenda, .todo-context-column { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.todo-agenda { padding: 4px 4px 36px 0; }
+.todo-context-column { display: flex; flex-direction: column; gap: 16px; padding: 4px 4px 28px; }
+
+.todo-overdue {
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--todo-warning) 18%, transparent);
+  border-radius: 14px;
+  background: var(--todo-warning-soft);
+}
+.todo-overdue-toggle {
+  width: 100%;
+  min-height: 49px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px !important;
+  color: color-mix(in srgb, var(--todo-warning) 76%, var(--todo-text));
+  text-align: left;
+}
+.todo-overdue-toggle > svg { transition: transform .18s ease; }
+.todo-overdue-toggle[aria-expanded="true"] > svg { transform: rotate(90deg); }
+.todo-overdue-copy { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.todo-overdue-copy strong { font-size: 11.5px; font-weight: 650; }
+.todo-overdue-copy small { color: color-mix(in srgb, var(--todo-warning) 70%, var(--todo-muted)); font-size: 10px; }
+.todo-overdue-action { font-size: 10px; font-weight: 650; }
+.todo-overdue-panel { padding: 0 8px 8px; }
+.todo-overdue-panel[hidden] { display: none; }
+
+.todo-day-section { margin-bottom: 32px; }
+.todo-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 0 4px 12px; }
+.todo-section-eyebrow { margin: 0 0 4px; color: var(--todo-muted); font-size: 10.5px; }
+.todo-section-title { margin: 0; font-size: clamp(24px, 2.3vw, 31px); line-height: 1.05; letter-spacing: -.04em; }
+.todo-section-count { padding-bottom: 4px; color: var(--todo-muted); font-size: 10.5px; }
+.todo-task-list { display: flex; flex-direction: column; gap: 8px; }
+.todo-task-row {
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 16px;
+  border: 1px solid var(--todo-line);
+  border-radius: 14px;
+  background: var(--todo-card);
+  transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+.todo-task-row:hover { border-color: color-mix(in srgb, var(--todo-accent) 25%, transparent); transform: translateY(-1px); box-shadow: var(--card-shadow, 0 8px 32px rgba(92, 92, 224, .07)); }
+.todo-task-row.is-compact { min-height: 48px; padding-block: 8px; border-radius: 14px; }
+.todo-task-row.is-done { opacity: .62; }
+.todo-task-check, .todo-detail-state-row > input, .todo-subtask > input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--todo-accent);
+  cursor: pointer;
+}
+.todo-task-open { min-width: 0; display: flex; align-items: center; gap: 12px; padding: 4px !important; text-align: left; }
+.todo-task-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.todo-task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 620; }
+.todo-task-row.is-done .todo-task-title { color: var(--todo-muted); text-decoration: line-through; }
+.todo-task-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--todo-muted); font-size: 10.5px; }
+.todo-analysis-pill, .todo-recurring-pill {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 10px;
+  color: var(--todo-accent);
+  background: var(--todo-accent-soft);
+  font-size: 9.5px;
+  font-weight: 650;
+}
+.todo-analysis-pill.is-needs-input { color: color-mix(in srgb, var(--todo-warning) 76%, var(--todo-text)); background: var(--todo-warning-soft); }
+.todo-analysis-pill.is-processing::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: currentColor; animation: todo-pulse 1.2s ease-in-out infinite; }
+.todo-recurring-pill { color: var(--todo-success); background: color-mix(in srgb, var(--todo-success) 11%, transparent); }
+.todo-day-empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  border: 1px dashed var(--todo-line-strong);
+  border-radius: 14px;
+  color: var(--todo-muted);
+  text-align: center;
+}
+.todo-day-empty span { width: 28px; height: 28px; display: grid; place-items: center; margin-bottom: 4px; border-radius: 10px; color: var(--todo-success); background: color-mix(in srgb, var(--todo-success) 11%, transparent); }
+.todo-day-empty strong { color: var(--todo-text); font-size: 12px; }
+.todo-day-empty small { font-size: 10.5px; }
+
+/* — 列表视角（对稿 td-list / td-lv-*）：root 事情的集合，回答「我手上总共有多少件事」。
+     视角只换中栏，右栏（日历 + 未定日期）两种视角都在场。 — */
+.todo-list-view { display: flex; flex-direction: column; gap: 4px; padding: 12px 0 28px; }
+.todo-list-row {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--todo-line);
+  border-radius: 14px;
+  background: var(--todo-card);
+  transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+.todo-list-row:hover { border-color: color-mix(in srgb, var(--todo-accent) 25%, transparent); transform: translateY(-1px); box-shadow: var(--card-shadow, 0 8px 32px rgba(92, 92, 224, .07)); }
+.todo-list-row.is-done { opacity: .62; }
+.todo-list-open { min-width: 0; flex: 1; display: flex; align-items: center; gap: 12px; padding: 4px !important; text-align: left; }
+.todo-list-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.todo-list-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 620; }
+.todo-list-row.is-done .todo-list-title { color: var(--todo-muted); text-decoration: line-through; }
+.todo-list-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.todo-list-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  color: var(--todo-muted);
+  background: var(--todo-card-soft);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+.todo-list-chip svg { flex: 0 0 auto; }
+.todo-list-chip.is-accent { color: var(--todo-accent); background: var(--todo-accent-soft); }
+.todo-list-chip.is-alert { color: color-mix(in srgb, var(--todo-warning) 76%, var(--todo-text)); background: var(--todo-warning-soft); }
+.todo-list-flag { display: inline-flex; align-items: center; color: var(--todo-accent); }
+.todo-list-progress { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.todo-list-progress-bar { width: 64px; height: 4px; overflow: hidden; border-radius: 999px; background: var(--todo-line); }
+.todo-list-progress-bar i { display: block; height: 100%; border-radius: 999px; background: var(--todo-accent); }
+.todo-list-progress-count { color: var(--todo-muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.todo-list-empty { margin: 52px 0; color: var(--todo-muted); font-size: 13px; line-height: 2; text-align: center; }
+
+.todo-calendar-card, .todo-undated-card {
+  flex: 0 0 auto;
+  border: 1px solid var(--todo-line);
+  border-radius: 14px;
+  background: var(--todo-card);
+}
+.todo-calendar-card { padding: 16px; }
+/* 月份标题是非交互内容，单独一带；翻页与「回到今天」是交互控件，压在它下面。
+   月历只有一个尺寸——V1.3 撤掉了展开开关，点某天变的是左边的日程流。 */
+.todo-calendar-heading { min-height: 22px; display: flex; align-items: center; }
+.todo-calendar-heading strong { font-size: 12px; }
+.todo-calendar-header { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; }
+.todo-calendar-today { min-height: 26px; margin-right: auto; padding: 0 8px !important; border-radius: 10px; color: var(--todo-accent); background: var(--todo-accent-soft) !important; font-size: 10px; font-weight: 650; }
+.todo-calendar-nav { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 10px; color: var(--todo-muted); }
+.todo-calendar-nav:hover { background: var(--todo-card-soft); }
+.todo-calendar-weekdays, .todo-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.todo-calendar-weekdays { margin-bottom: 4px; }
+.todo-calendar-weekdays span { color: var(--todo-faint); font-size: 8.5px; text-align: center; }
+.todo-calendar-grid { gap: 4px; }
+.todo-calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.todo-calendar-day:hover { background: var(--todo-card-soft); }
+.todo-calendar-day.is-outside { color: var(--todo-faint); opacity: .55; }
+.todo-calendar-day.is-today { color: var(--todo-accent); font-weight: 750; }
+.todo-calendar-day.is-selected { color: var(--todo-on-accent); background: var(--todo-accent) !important; }
+.todo-calendar-dot {
+  position: absolute;
+  right: 4px;
+  bottom: 1px;
+  min-width: 10px;
+  height: 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--todo-accent);
+  background: var(--todo-accent-soft);
+  font-size: 6px;
+  font-weight: 700;
+}
+/* 徽标底色跟主题走：写死白色的话，深色下会在选中日上顶出一颗纯白圆点，
+   里面那颗 6px 的数字反而看不清。 */
+.todo-calendar-day.is-selected .todo-calendar-dot { color: var(--todo-accent); background: var(--todo-card); }
+
+.todo-undated-card { min-height: 150px; padding: 16px; }
+.todo-undated-card > header { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--todo-line); }
+.todo-undated-card h2 { margin: 0; font-size: 13px; }
+.todo-undated-card header p { margin: 4px 0 0; color: var(--todo-muted); font-size: 9.5px; }
+.todo-undated-card header > span { min-width: 22px; height: 22px; display: grid; place-items: center; border-radius: 10px; color: var(--todo-accent); background: var(--todo-accent-soft); font-size: 9px; font-weight: 700; }
+.todo-undated-list { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
+.todo-undated-empty { margin: 24px 0; color: var(--todo-muted); font-size: 10px; text-align: center; }
+
+/* 蒙版分成两件东西：变暗的那一层挂在非交互的 layer 上，可点的 scrim 从 y=44 起。
+   顶上那 44px 归 Host 的 Title Bar，插件的按钮本来也拿不到那里的点击
+   （plugin-development-v1 §3.1），所以别把可点区域画上去。
+   详情 Drawer 已改挤压式（V1.5 对稿 .td-detail.open）：不盖蒙版、不占覆盖层，
+   剩下的蒙版只有整页助理层。 */
+.todo-agent-layer {
+  position: absolute;
+  z-index: 80;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--todo-scrim-ink) 34%, transparent);
+}
+.todo-agent-scrim { position: absolute; inset: 0; width: 100%; background: transparent !important; cursor: default; }
+/* 挤压式详情列（对稿 .td-detail.open{width:372px;border-left}）：贴右、以一条分隔线
+   与日程流相接，无阴影无圆角——它不是浮上来的卡片，是布局里固定的一列。 */
+.todo-detail-drawer {
+  flex: 0 0 auto;
+  width: min(372px, 36vw);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--todo-line);
+  background: var(--todo-panel);
+  animation: todo-drawer-in .22s ease-out;
+}
+/* 详情开着时主列表让位（对稿 tdSyncLayout：Drawer 开了，右栏藏起——视图层直接
+   不渲染右栏）：日程流占满剩余宽度——被挤窄的是「视野」，不是「可达性」，
+   列表一直看得见、点得动。 */
+.todo-body.is-detail-open .todo-layout { grid-template-columns: minmax(0, 1fr); }
+.todo-agent-drawer {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 88vw);
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--todo-line);
+  background: var(--todo-panel);
+  box-shadow: -18px 0 54px color-mix(in srgb, var(--todo-shadow-ink) 18%, transparent);
+  animation: todo-drawer-in .22s ease-out;
+}
+.todo-detail-header, .todo-agent-header {
+  min-height: 66px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 12px 20px;
+  border-bottom: 1px solid var(--todo-line);
+}
+/* 整页助理层与工作区都已位于 main-body 内，不再重复下移。 */
+.todo-agent-layer .todo-agent-header,
+.todo-assistant-workspace > .todo-agent-drawer > .todo-agent-header {
+  min-height: 43px;
+  align-items: flex-start;
+  padding: 0 16px 8px 20px;
+}
+.todo-detail-header > div:first-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.todo-detail-header > div:first-child,
+.todo-agent-layer .todo-agent-header > div,
+.todo-assistant-workspace > .todo-agent-drawer > .todo-agent-header > div { min-height: 34px; justify-content: center; }
+.todo-detail-header > div:first-child span { color: var(--todo-muted); font-size: 9px; }
+.todo-detail-header > div:first-child strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.todo-detail-header > div:last-child { display: flex; align-items: center; gap: 8px; }
+.todo-detail-assistant {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px !important;
+  border-radius: 10px;
+  color: var(--todo-accent);
+  background: var(--todo-accent-soft) !important;
+  font-size: 10.5px;
+  font-weight: 650;
+}
+.todo-detail-close, .todo-agent-close { position: relative; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--todo-muted); }
+.todo-detail-close::after, .todo-agent-close::after { content: ""; position: absolute; inset: -8px; }
+.todo-detail-close:hover, .todo-agent-close:hover { background: var(--todo-card-soft); }
+.todo-detail-scroll { min-height: 0; flex: 1; overflow-y: auto; scrollbar-width: thin; }
+.todo-detail-content { padding: 24px 24px 40px; }
+.todo-detail-content.is-promoted { max-width: 860px; margin: 0 auto; padding: 28px clamp(24px, 4vw, 54px) 56px; }
+.todo-detail-state-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
+.todo-detail-state-row > input { width: 22px; height: 22px; margin-top: 4px; }
+.todo-detail-state-row h2 { margin: 0; font-size: clamp(19px, 2vw, 25px); line-height: 1.3; letter-spacing: -.025em; }
+.todo-detail-state-row p { margin: 8px 0 0; color: var(--todo-muted); font-size: 11px; line-height: 1.55; }
+.todo-detail-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 24px 0 0; overflow: hidden; border: 1px solid var(--todo-line); border-radius: 14px; background: var(--todo-line); }
+.todo-detail-fields > div { min-width: 0; padding: 12px 12px; background: var(--todo-card); }
+.todo-detail-fields dt { color: var(--todo-muted); font-size: 9px; }
+.todo-detail-fields dd { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; }
+.todo-detail-section { margin-top: 28px; }
+.todo-detail-section-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.todo-detail-section-heading h3 { margin: 0; font-size: 13px; }
+.todo-detail-section-heading p { margin: 4px 0 0; color: var(--todo-muted); font-size: 9.5px; }
+.todo-suggestion-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 12px 12px;
+  border: 1px solid var(--todo-line);
+  border-radius: 14px;
+  background: var(--todo-card-soft);
+}
+.todo-suggestion-confidence { min-width: 34px; padding: 4px 4px; border-radius: 10px; color: var(--todo-accent); background: var(--todo-accent-soft); font-size: 8.5px; font-weight: 700; text-align: center; }
+.todo-suggestion-card > div:nth-child(2) { min-width: 0; }
+.todo-suggestion-card strong { font-size: 11px; }
+.todo-suggestion-card p { margin: 4px 0 0; overflow: hidden; color: var(--todo-muted); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.todo-suggestion-actions { display: flex; align-items: center; gap: 4px; }
+.todo-suggestion-accept, .todo-suggestion-dismiss { min-height: 29px; padding: 0 8px !important; border-radius: 10px; font-size: 9.5px; font-weight: 650; }
+.todo-suggestion-accept { color: var(--todo-on-accent) !important; background: var(--todo-accent) !important; }
+.todo-suggestion-dismiss { color: var(--todo-muted); }
+.todo-suggestions-more { width: 100%; min-height: 34px; border-radius: 10px; color: var(--todo-accent); font-size: 10px; }
+.todo-suggestions-more:hover { background: var(--todo-accent-soft); }
+.todo-parent-complete { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; padding: 12px; border: 1px solid color-mix(in srgb, var(--todo-success) 20%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--todo-success) 8%, transparent); }
+.todo-parent-complete > div { flex: 1; }
+.todo-parent-complete strong { font-size: 11px; }
+.todo-parent-complete p { margin: 4px 0 0; color: var(--todo-muted); font-size: 9.5px; }
+.todo-parent-complete-action { min-height: 30px; padding: 0 12px !important; border-radius: 10px; color: var(--todo-success); background: color-mix(in srgb, var(--todo-success) 12%, transparent) !important; font-size: 9px; font-weight: 650; }
+.todo-subtask-tree { display: flex; flex-direction: column; gap: 4px; }
+.todo-subtask { min-height: 37px; display: flex; align-items: center; gap: 8px; margin-left: calc(var(--todo-depth) * 17px); padding: 4px 8px; border-radius: 10px; background: var(--todo-card-soft); }
+.todo-subtask > input { width: 15px; height: 15px; }
+.todo-subtask-open { flex: 1; overflow: hidden; padding: 4px !important; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; }
+.todo-subtask.is-done .todo-subtask-open { color: var(--todo-muted); text-decoration: line-through; }
+.todo-subtask-form { display: flex; gap: 8px; margin-top: 8px; }
+.todo-subtask-form input { min-width: 0; flex: 1; height: 36px; padding: 0 12px; border: 1px solid var(--todo-line); border-radius: 10px; outline: 0; color: var(--todo-text); background: var(--todo-card); font-size: 10.5px; }
+.todo-subtask-add { min-width: 54px; border-radius: 10px; color: var(--todo-accent); background: var(--todo-accent-soft) !important; font-size: 10px; font-weight: 650; }
+
+.todo-agent-drawer { width: min(430px, 88vw); }
+.todo-agent-header { min-height: 66px; }
+.todo-agent-avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--todo-on-accent); background: var(--todo-accent); font-size: 12px; font-weight: 750; }
+.todo-agent-header > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.todo-agent-header strong { font-size: 12.5px; }
+.todo-agent-header div span { overflow: hidden; color: var(--todo-muted); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.todo-agent-drawer .agent-conversation-stream { min-height: 0; flex: 1; padding: 20px 16px; }
+.todo-agent-drawer .agent-message { max-width: 88%; }
+.todo-agent-drawer .agent-message-bubble { font-size: 11.5px; }
+.todo-agent-drawer .agent-composer { padding-inline: 12px; }
+.todo-agent-drawer .agent-composer-input { font-size: 11.5px; }
+.todo-agent-listening { display: flex; align-items: center; gap: 12px; margin: 12px 16px 0; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--todo-accent) 22%, transparent); border-radius: 14px; background: var(--todo-accent-soft); }
+.todo-agent-listening > span { width: 12px; height: 12px; border: 3px solid color-mix(in srgb, var(--todo-accent) 24%, transparent); border-top-color: var(--todo-accent); border-radius: 50%; animation: todo-spin .9s linear infinite; }
+.todo-agent-listening div { display: flex; flex-direction: column; gap: 1px; }
+.todo-agent-listening strong { color: var(--todo-accent); font-size: 10px; }
+.todo-agent-listening small { color: var(--todo-muted); font-size: 8.5px; }
+
+/* 助理主动来追问的那一档：挤压式的第三列，不盖蒙版、不抢焦点。
+   日程流被挤窄，但一直看得见、点得动——「不理它」才真的是零代价。 */
+.todo-agent-drawer.is-aside {
+  z-index: auto;
+  flex: 0 0 auto;
+  width: min(390px, 40%);
+  height: auto;
+  margin: 0 clamp(22px, 3vw, 42px) 24px 0;
+  border: 1px solid var(--todo-line);
+  border-radius: 14px;
+  box-shadow: 0 14px 40px color-mix(in srgb, var(--todo-shadow-ink) 10%, transparent);
+}
+
+.todo-app.is-agent-context { background: var(--todo-card); }
+.todo-assistant-workspace { width: 100%; height: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 38%); overflow: hidden; }
+.todo-assistant-context { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--todo-canvas); }
+.todo-assistant-context-header { min-height: 43px; flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 0 24px 8px; border-bottom: 1px solid var(--todo-line); background: var(--todo-card); }
+.todo-assistant-back { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 12px !important; border-radius: 10px; color: var(--todo-accent); font-size: 10.5px; font-weight: 650; }
+.todo-assistant-back:hover { background: var(--todo-accent-soft); }
+.todo-assistant-context-header > span { min-height: 34px; display: flex; align-items: center; color: var(--todo-muted); font-size: 9.5px; }
+.todo-assistant-context-scroll { min-height: 0; flex: 1; overflow-y: auto; }
+.todo-assistant-workspace > .todo-agent-drawer { width: auto; box-shadow: none; animation: none; }
+
+/* ═══ 新增一件事：整页专注层（V1.3）═══
+   「此刻只有这件事重要」由页内完成，Host 的侧栏不归 App 管——插件 WebView 在侧栏右边，
+   那半边根本画不到。深色背景与可点 scrim 都锚定 main-body，从 y=44 起；Host Title Bar
+   保持干净并继续拥有自己的拖拽与点击区域。 */
+.todo-compose-layer {
+  position: absolute;
+  z-index: 90;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 64px clamp(18px, 3vw, 32px) 24px;
+  background: color-mix(in srgb, var(--todo-scrim-ink) 42%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.todo-compose-scrim { position: absolute; inset: 0; width: 100%; background: transparent !important; cursor: default; }
+.todo-compose-card {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  padding: 16px;
+  border: 1px solid var(--todo-line);
+  border-radius: 14px;
+  background: var(--todo-panel);
+  box-shadow: 0 26px 70px color-mix(in srgb, var(--todo-shadow-ink) 28%, transparent);
+  animation: todo-compose-in .18s ease-out;
+}
+/* 「它确实在听」的唯一凭据。语音是默认档，不用先去找麦克风按钮。 */
+.todo-compose-hint { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 0 4px; color: var(--todo-muted); font-size: 11px; }
+.todo-compose-hint.is-listening { color: var(--todo-accent); }
+.todo-compose-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--todo-faint); }
+.todo-compose-hint.is-listening .todo-compose-dot { background: var(--todo-accent); animation: todo-mic-pulse 1.4s ease-in-out infinite; }
+.todo-compose-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 8px;
+  border: 1px solid var(--todo-line-strong);
+  border-radius: 10px;
+  background: var(--todo-card-soft);
+  transition: border-color .16s ease;
+}
+.todo-compose-form:focus-within { border-color: color-mix(in srgb, var(--todo-accent) 52%, transparent); }
+.todo-compose-mic { position: relative; width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--todo-line) !important; border-radius: 50%; color: var(--todo-muted); }
+.todo-compose-mic::after { content: ""; position: absolute; inset: -8px; }
+.todo-compose-mic.is-on { border-color: transparent !important; color: var(--todo-on-accent) !important; background: var(--todo-accent) !important; }
+.todo-compose-input { flex: 1; min-width: 0; height: 38px; padding: 0 8px; border: 0; outline: 0 !important; color: var(--todo-text); background: transparent; font-size: 14px; }
+.todo-compose-input::placeholder { color: var(--todo-faint); }
+.todo-compose-submit { position: relative; width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: var(--todo-on-accent) !important; background: var(--todo-accent) !important; }
+.todo-compose-submit::after { content: ""; position: absolute; inset: -8px; }
+.todo-compose-submit:disabled { color: var(--todo-faint) !important; background: var(--todo-line) !important; cursor: default; }
+/* 属性默认只是一排图标：先把话收下，补细节是可选动作，不是填表义务。 */
+.todo-compose-attrs { display: flex; flex-wrap: wrap; gap: 4px; padding: 12px 4px 0; }
+.todo-compose-attr { min-height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px !important; border-radius: 10px; color: var(--todo-muted); font-size: 11px; }
+.todo-compose-attr:hover { background: var(--todo-card-soft) !important; }
+.todo-compose-attr.is-on { color: var(--todo-accent); background: var(--todo-accent-soft) !important; }
+.todo-compose-fields { display: flex; flex-direction: column; gap: 8px; }
+.todo-compose-fields:not(:empty) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--todo-line); }
+.todo-compose-field { display: flex; align-items: center; gap: 8px; }
+.todo-compose-field-label { width: 42px; flex: 0 0 auto; color: var(--todo-muted); font-size: 11px; }
+.todo-compose-field input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border: 1px solid var(--todo-line); border-radius: 10px; outline: 0; color: var(--todo-text); background: var(--todo-card-soft); font-size: 12px; }
+.todo-compose-field input:focus { border-color: color-mix(in srgb, var(--todo-accent) 52%, transparent); }
+.todo-compose-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 4px 0; color: var(--todo-faint); font-size: 10px; }
+
+@keyframes todo-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@keyframes todo-spin { to { transform: rotate(360deg); } }
+@keyframes todo-drawer-in { from { transform: translateX(22px); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
+@keyframes todo-compose-in { from { transform: translateY(-8px) scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes todo-mic-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.78); } }
+@keyframes todo-day-hit { from { background: var(--todo-accent-soft); } to { background: transparent; } }
+
+@media (max-width: 1050px) {
+  .todo-layout { grid-template-columns: minmax(0, 13fr) minmax(272px, 7fr); }
+  .todo-suggestion-card { grid-template-columns: auto minmax(0, 1fr); }
+  .todo-suggestion-actions { grid-column: 2; }
+  .todo-assistant-workspace { grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr); }
+  .todo-agent-drawer.is-aside { width: min(340px, 42%); }
+}
+
+@media (max-width: 780px) {
+  .todo-app { overflow-y: auto; }
+  .todo-topbar { padding-inline: 20px; }
+  .todo-topbar-heading p { display: none; }
+  /* 单列时右栏就叠到日程流下面，月历一直看得见——不收抽屉，也就不需要一颗
+     把它叫出来的按钮（界面克制 1：不给这颗按钮，用户什么都没失去）。 */
+  .todo-body { flex-direction: column; }
+  .todo-layout { display: flex; flex-direction: column; padding-inline: 20px; }
+  .todo-agenda, .todo-context-column { overflow: visible; }
+  .todo-agenda { order: 1; }
+  .todo-context-column { order: 2; }
+  .todo-calendar-card { order: 1; }
+  .todo-undated-card { order: 2; }
+  .todo-assistant-workspace { height: 100vh; grid-template-columns: 1fr; }
+  .todo-assistant-context { display: none; }
+  .todo-assistant-workspace > .todo-agent-drawer { width: 100%; border-left: 0; }
+  .todo-agent-drawer { width: min(94vw, 520px); }
+  /* 单列时详情没法再「挤在旁边」（对稿 §7.5：不能造成横向溢出）——占满整页，
+     但仍然不是模态：没有蒙版，关掉就回到原来的位置。 */
+  .todo-body.is-detail-open .todo-detail-drawer {
+    position: absolute;
+    inset: 0;
+    z-index: 70;
+    width: auto;
+    border-left: 0;
+    animation: none;
+  }
+  /* 单列时整页是一条滚动流：助理若排在日历和未定日期之后，就落到了折线以下——
+     一条没人看见的追问等于没问。所以把它提到日程流之上，用高度上限保证下面那一屏
+     的事情仍然露在外面：它挪动内容，但不盖住内容。 */
+  .todo-agent-drawer.is-aside { order: -1; width: auto; max-height: 46vh; margin: 0 20px 16px; }
+  .todo-compose-layer { padding: 56px 16px 16px; }
+}
+
+@media (max-width: 520px) {
+  .todo-section-title { font-size: 25px; }
+  .todo-compose-field { align-items: stretch; flex-direction: column; gap: 4px; }
+  .todo-compose-field-label { width: auto; }
+  .todo-detail-fields { grid-template-columns: 1fr; }
+  .todo-suggestion-card { grid-template-columns: minmax(0, 1fr); }
+  .todo-suggestion-confidence { justify-self: start; }
+  .todo-suggestion-actions { grid-column: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todo-app *, .todo-app *::before, .todo-app *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+.tbc-option-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--todo-warning) 18%, transparent);
+  border-radius: 999px;
+  background: var(--todo-warning-soft);
+  color: color-mix(in srgb, var(--todo-warning) 76%, var(--todo-text));
+  font-size: 8px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: .08em;
+  vertical-align: middle;
+}

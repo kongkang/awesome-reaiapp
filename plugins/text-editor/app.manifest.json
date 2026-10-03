@@ -1,0 +1,229 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.text-editor",
+  "version": "0.1.2-dev.1",
+  "publisherId": "reai",
+  "name": "文本编辑器",
+  "description": "本地 Markdown、代码与文件差异查看工具",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Official",
+    "tagline": "写文档、看源码、比较修改，文件只留在本机",
+    "longDescription": "通用本地文本编辑器。Markdown 使用 ProseKit，源码与语法高亮使用 CodeMirror，文件差异使用 CodeMirror Merge。它不包含终端、LSP、Git 或项目执行能力。",
+    "capabilities": [
+      {
+        "label": "本地文件",
+        "detail": "只访问你通过系统面板授权的工作文件夹"
+      },
+      {
+        "label": "三种视图",
+        "detail": "Markdown 富文本、源码高亮、文件差异"
+      },
+      {
+        "label": "保存保护",
+        "detail": "文件在外部变化时先比较，不直接覆盖"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#eef0ff,#d9dcff)",
+        "caption": "Markdown 与源码模式共用一份本地文档"
+      },
+      {
+        "gradient": "linear-gradient(135deg,#e6e9ff,#c9ceff)",
+        "caption": "并排或统一视图比较文件变化"
+      }
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.16.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "titlebar.action@1",
+      "apps.intent@1",
+      "local.files@1",
+      "storage.kv@1",
+      "metadata.i18n@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/main.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "text-editor-view-state",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "0.1.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "文本编辑器"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "text-editor",
+        "label": "文本编辑器",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarActions": [
+      {
+        "id": "pick-workspace",
+        "label": "打开本地工作文件夹",
+        "icon": "folder",
+        "text": "打开文件夹",
+        "showOnTitlebarHover": true,
+        "intent": {
+          "type": "pick-workspace"
+        }
+      }
+    ],
+    "intents": [
+      {
+        "id": "open-document",
+        "version": "1.1.0",
+        "componentId": "ui",
+        "opens": "surface:main",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "document",
+                "source",
+                "diff"
+              ],
+              "description": "打开后优先进入的视图；缺省按文件类型选择"
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "view-diff",
+        "version": "1.1.0",
+        "componentId": "ui",
+        "opens": "surface:main",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "document",
+                "source",
+                "diff"
+              ],
+              "description": "打开后优先进入的视图；缺省进入变更比较"
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "additionalProperties": false
+        }
+      }
+    ]
+  },
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadata.name"
+      },
+      {
+        "target": "description",
+        "key": "metadata.description"
+      },
+      {
+        "target": "surface.title",
+        "id": "main",
+        "key": "metadata.surfaceTitle"
+      },
+      {
+        "target": "sidebar.label",
+        "id": "text-editor",
+        "key": "metadata.sidebarLabel"
+      },
+      {
+        "target": "titlebarAction.label",
+        "id": "pick-workspace",
+        "key": "metadata.pickWorkspaceLabel"
+      },
+      {
+        "target": "titlebarAction.text",
+        "id": "pick-workspace",
+        "key": "metadata.pickWorkspaceText"
+      }
+    ]
+  }
+}

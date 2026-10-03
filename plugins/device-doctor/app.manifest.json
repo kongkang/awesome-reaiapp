@@ -1,0 +1,143 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.device-doctor",
+  "version": "1.0.2",
+  "publisherId": "reai",
+  "name": "设备诊断助手",
+  "description": "本地 agent 内核的第一个消费者：只读查看设备与权限状态，回答「键盘为什么不工作」",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Utility",
+    "tagline": "键盘出问题？让它替你看看本机状态",
+    "longDescription": "设备诊断助手跑在 App 内置的本地 agent 内核上：只读查看键盘连接状态、系统权限、最近日志摘要与运行环境，把故障定位到「没连接 / 权限没给 / 固件太旧」这类可操作的下一步。它不写文件、不执行命令、不读任意路径。回答需要分析时，会把脱敏后的日志摘要发到云端模型网关分析。",
+    "capabilities": [
+      {
+        "label": "会用到",
+        "detail": "只读查询设备连接与系统权限状态（不弹授权窗）"
+      },
+      {
+        "label": "会用到",
+        "detail": "把脱敏后的日志摘要发到云端分析（会产生用量）"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#0f766e,#14b8a6)",
+        "caption": "只读诊断，指向下一步"
+      }
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    },
+    {
+      "platform": "windows",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.3.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "storage.kv@1",
+      "agent.local@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.2",
+  "requirements": [
+    {
+      "id": "runtime.pi",
+      "displayName": "ReAI Pi Runtime",
+      "kind": "managed_executable",
+      "componentId": "ui",
+      "required": false,
+      "requiredFor": ["capability:agent.local@1"],
+      "platforms": ["macos"],
+      "channels": ["direct"],
+      "version": { "constraint": ">=0.84.3 <0.85.0" },
+      "probe": { "type": "host_registered", "id": "pi-agent-v1" },
+      "provision": {
+        "mode": "host_managed_resource",
+        "resourceId": "com.reai.runtime.pi",
+        "installPolicy": "optional_on_demand",
+        "requiresConsent": true
+      },
+      "failure": { "componentState": "degraded", "featureState": "blocked", "hostState": "satisfied" },
+      "remediation": {
+        "action": "install_managed_resource",
+        "label": "下载并安装 Pi 运行组件",
+        "restartRequired": false
+      }
+    }
+  ],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "doctor-state",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "1.0.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "设备诊断助手"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "device-doctor",
+        "label": "设备诊断",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ]
+  }
+}

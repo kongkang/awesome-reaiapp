@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<!--
+  AI许愿墙 mockup v2 —— 左表单 + 右双入口（动态墙 / 扫码）
+  · 左：愿望 textarea + 分类 + 落款（选填）+ 贴上墙
+  · 右 tab：[许愿墙] 动态卡片墙，点卡片弹窗看详情 / [扫码] QR 入口
+  · 卡片风格照搬墙站美学：tone 配色 + 随机旋转 + 入场动画
+  · 右上角可切 light/dark + 登录态
+-->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI许愿墙 · mockup</title>
+  <style>
+    [data-theme="light"] {
+      --accent:#5c5ce0;--accent-soft:rgba(92,92,224,.07);--accent-glow:rgba(92,92,224,.22);
+      --bg:#f4f3f9;--card-bg:rgba(255,255,255,.8);--card-border:rgba(92,92,224,.1);
+      --text-primary:#1c1c2e;--text-secondary:#6b6b80;--text-tertiary:#a5a5b8;
+      --divider:rgba(92,92,224,.08);--panel-bg:rgba(255,255,255,.9);
+      --modal-overlay:rgba(28,28,46,.45);
+    }
+    [data-theme="dark"] {
+      --accent:#7b7bf7;--accent-soft:rgba(123,123,247,.1);--accent-glow:rgba(123,123,247,.3);
+      --bg:#0e0e1a;--card-bg:rgba(26,26,46,.8);--card-border:rgba(123,123,247,.12);
+      --text-primary:#ededf5;--text-secondary:#9494a8;--text-tertiary:#505068;
+      --divider:rgba(123,123,247,.1);--panel-bg:rgba(26,26,46,.95);
+      --modal-overlay:rgba(0,0,0,.6);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text-primary);height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased;}
+
+    .mock-toolbar{position:fixed;top:8px;right:8px;z-index:99;display:flex;gap:6px;}
+    .mock-toolbar button{background:var(--panel-bg);border:1px solid var(--card-border);border-radius:7px;padding:4px 10px;font-size:11px;color:var(--text-secondary);cursor:pointer;backdrop-filter:blur(8px);}
+    .mock-toolbar button:hover{border-color:var(--accent);color:var(--accent);}
+
+    .ww-app{display:flex;height:100vh;}
+
+    /* ---- 左栏 ---- */
+    .ww-form-pane{width:40%;min-width:300px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--divider);overflow-y:auto;}
+    .ww-form-top{padding:24px 28px 16px;}
+    .ww-form-title{font-size:16px;font-weight:650;color:var(--text-primary);display:flex;align-items:baseline;gap:8px;}
+    .ww-form-aka{font-size:12px;font-weight:500;color:var(--accent);}
+    .ww-form-sub{font-size:12px;color:var(--text-tertiary);margin-top:4px;line-height:1.5;}
+    .ww-form-body{flex:1;padding:0 28px 20px;display:flex;flex-direction:column;gap:16px;}
+    .ww-field-label{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;}
+    .ww-textarea{width:100%;min-height:88px;resize:none;padding:12px 14px;font-size:14px;line-height:1.6;font-family:inherit;color:var(--text-primary);background:var(--card-bg);border:1.5px solid var(--card-border);border-radius:11px;outline:none;transition:border-color .15s;}
+    .ww-textarea:focus{border-color:var(--accent);}
+    .ww-textarea::placeholder{color:var(--text-tertiary);}
+    .ww-input{width:100%;padding:10px 14px;font-size:14px;font-family:inherit;color:var(--text-primary);background:var(--card-bg);border:1.5px solid var(--card-border);border-radius:11px;outline:none;transition:border-color .15s;}
+    .ww-input:focus{border-color:var(--accent);}
+    .ww-input::placeholder{color:var(--text-tertiary);}
+    .ww-cats{display:flex;gap:8px;flex-wrap:wrap;}
+    .ww-cat{padding:7px 14px;font-size:13px;font-family:inherit;border:1.5px solid var(--card-border);border-radius:9px;background:transparent;color:var(--text-secondary);cursor:pointer;transition:all .12s;}
+    .ww-cat:hover{background:var(--accent-soft);}
+    .ww-cat.is-active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
+    .ww-form-foot{padding:14px 28px;border-top:1px solid var(--divider);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .ww-counter{font-size:12px;color:var(--text-tertiary);font-variant-numeric:tabular-nums;}
+    .ww-counter.is-over{color:#ff3b30;}
+    .ww-user{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ww-user .ww-user-name{color:var(--text-primary);font-weight:600;}
+    .ww-user.is-out .ww-user-name{color:var(--accent);font-weight:500;}
+    .ww-post-btn{padding:10px 20px;font-size:14px;font-weight:600;font-family:inherit;border:none;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer;transition:opacity .12s;display:flex;align-items:center;gap:6px;}
+    .ww-post-btn:hover{opacity:.88;}
+    .ww-post-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+    /* ---- 右栏 ---- */
+    .ww-wall-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+    .ww-wall-tabs{display:flex;gap:2px;padding:14px 20px 0;border-bottom:1px solid var(--divider);flex-shrink:0;}
+    .ww-tab{padding:8px 16px;font-size:13px;font-family:inherit;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all .12s;margin-bottom:-1px;}
+    .ww-tab:hover{color:var(--text-primary);}
+    .ww-tab.is-active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+
+    /* 许愿墙视图 */
+    .ww-wall-scroll{flex:1;overflow-y:auto;padding:20px;position:relative;}
+    .ww-wall-grid{columns:3;column-gap:12px;}
+    @media(max-width:1200px){.ww-wall-grid{columns:2;}}
+    .ww-card{break-inside:avoid;margin-bottom:12px;padding:14px 16px;border-radius:12px;cursor:pointer;transition:transform .15s,box-shadow .15s;animation:ww-pop .35s cubic-bezier(.34,1.56,.64,1) both;position:relative;}
+    .ww-card:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 8px 24px rgba(0,0,0,.12);}
+    .ww-card-text{font-size:13px;line-height:1.5;font-weight:500;margin-bottom:8px;}
+    .ww-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;}
+    .ww-card-author{opacity:.6;}
+    .ww-card-cat{padding:2px 8px;border-radius:5px;font-weight:600;font-size:10px;}
+    .ww-wall-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-tertiary);font-size:13px;text-align:center;padding:40px;}
+
+    /* tone 配色（照搬墙站） */
+    .tone-lime{background:#d9f5d9;color:#1a3d1a;}.tone-lime .ww-card-cat{background:rgba(26,61,26,.12);}
+    .tone-pink{background:#fce4ec;color:#4a1a2e;}.tone-pink .ww-card-cat{background:rgba(74,26,46,.12);}
+    .tone-blue{background:#dde8fa;color:#1a2a4a;}.tone-blue .ww-card-cat{background:rgba(26,42,74,.12);}
+    .tone-orange{background:#fde8d4;color:#4a2a1a;}.tone-orange .ww-card-cat{background:rgba(74,42,26,.12);}
+    .tone-paper{background:#f5f0e0;color:#3d3520;}.tone-paper .ww-card-cat{background:rgba(61,53,32,.12);}
+    .tone-lavender{background:#e8e0f5;color:#2e1a4a;}.tone-lavender .ww-card-cat{background:rgba(46,26,74,.12);}
+    [data-theme="dark"] .tone-lime{background:rgba(62,207,122,.18);color:#b8f5cc;}
+    [data-theme="dark"] .tone-pink{background:rgba(240,120,160,.18);color:#f5b8cc;}
+    [data-theme="dark"] .tone-blue{background:rgba(100,130,220,.18);color:#b8c8f5;}
+    [data-theme="dark"] .tone-orange{background:rgba(240,169,76,.18);color:#f5d4a0;}
+    [data-theme="dark"] .tone-paper{background:rgba(200,190,150,.15);color:#e0d8c0;}
+    [data-theme="dark"] .tone-lavender{background:rgba(155,120,220,.18);color:#d0b8f5;}
+    [data-theme="dark"] .tone-lime .ww-card-cat,[data-theme="dark"] .tone-pink .ww-card-cat,[data-theme="dark"] .tone-blue .ww-card-cat,[data-theme="dark"] .tone-orange .ww-card-cat,[data-theme="dark"] .tone-paper .ww-card-cat,[data-theme="dark"] .tone-lavender .ww-card-cat{background:rgba(255,255,255,.1);}
+
+    @keyframes ww-pop{from{opacity:0;transform:scale(.85) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);}}
+
+    /* 扫码视图 */
+    .ww-qr-view{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:18px;}
+    .ww-qr-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:14px;max-width:280px;}
+    .ww-qr-frame{padding:14px;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);line-height:0;}
+    .ww-qr-frame svg{display:block;width:180px;height:180px;}
+    .ww-qr-url{font-size:12px;color:var(--text-tertiary);font-family:ui-monospace,"SF Mono",monospace;text-align:center;word-break:break-all;}
+    .ww-qr-state{font-size:11px;padding:3px 10px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-weight:600;}
+    .ww-qr-hint{font-size:13px;color:var(--text-secondary);text-align:center;line-height:1.5;max-width:260px;}
+
+    /* ---- 弹窗 ---- */
+    .ww-modal-overlay{position:fixed;inset:0;background:var(--modal-overlay);display:flex;align-items:center;justify-content:center;z-index:200;animation:ww-fade .2s;backdrop-filter:blur(4px);}
+    .ww-modal{max-width:420px;width:90%;border-radius:18px;padding:28px;animation:ww-modal-pop .3s cubic-bezier(.34,1.56,.64,1);}
+    .ww-modal-cat{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;margin-bottom:14px;}
+    .ww-modal-text{font-size:17px;line-height:1.6;font-weight:500;margin-bottom:18px;}
+    .ww-modal-foot{display:flex;align-items:center;justify-content:space-between;font-size:13px;}
+    .ww-modal-author{opacity:.65;}
+    .ww-modal-time{opacity:.5;font-size:12px;}
+    .ww-modal-close{position:absolute;top:16px;right:16px;width:28px;height:28px;border:none;background:rgba(0,0,0,.06);border-radius:50%;cursor:pointer;font-size:16px;color:inherit;display:flex;align-items:center;justify-content:center;}
+    .ww-modal-close:hover{background:rgba(0,0,0,.12);}
+    @keyframes ww-fade{from{opacity:0;}to{opacity:1;}}
+    @keyframes ww-modal-pop{from{opacity:0;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
+
+    @media(max-width:680px){.ww-app{flex-direction:column;}.ww-form-pane{width:100%;min-width:0;border-right:0;border-bottom:1px solid var(--divider);max-height:50vh;}.ww-wall-grid{columns:2;}}
+  </style>
+</head>
+<body>
+  <div class="mock-toolbar">
+    <button id="toggle-theme">🌙 Dark</button>
+    <button id="toggle-login">切换登录态</button>
+  </div>
+
+  <div class="ww-app">
+    <!-- 左：表单 -->
+    <div class="ww-form-pane">
+      <div class="ww-form-top">
+        <div class="ww-form-title">AI许愿墙 <span class="ww-form-aka">疯狂点子王</span></div>
+        <div class="ww-form-sub">把你的期许，说给未来听</div>
+      </div>
+      <div class="ww-form-body">
+        <div>
+          <div class="ww-field-label">你的愿望</div>
+          <textarea class="ww-textarea" id="draft" maxlength="200" placeholder="比如：希望能有一个自动整理桌面文件的工具…"></textarea>
+        </div>
+        <div>
+          <div class="ww-field-label">分类</div>
+          <div class="ww-cats" id="cats">
+            <button class="ww-cat is-active" data-cat="life">生活</button>
+            <button class="ww-cat" data-cat="work">工作</button>
+            <button class="ww-cat" data-cat="create">创造</button>
+            <button class="ww-cat" data-cat="learn">学习</button>
+          </div>
+        </div>
+        <div>
+          <div class="ww-field-label">落款 <span style="font-weight:400;text-transform:none;color:var(--text-tertiary)">（选填，显示在卡片上）</span></div>
+          <input class="ww-input" id="nickname" type="text" maxlength="20" placeholder="你的昵称" />
+        </div>
+      </div>
+      <div class="ww-form-foot">
+        <span class="ww-counter" id="counter">0/200</span>
+        <button class="ww-post-btn" id="post-btn">✦ 贴上墙</button>
+      </div>
+    </div>
+
+    <!-- 右：墙 / 扫码 -->
+    <div class="ww-wall-pane">
+      <div class="ww-wall-tabs">
+        <button class="ww-tab is-active" data-tab="wall">许愿墙</button>
+        <button class="ww-tab" data-tab="qr">扫码</button>
+        <span id="user" class="ww-user" style="margin-left:auto;align-self:center;padding-right:8px;">
+          <span class="ww-user-name">张三</span>
+        </span>
+      </div>
+
+      <!-- 墙视图 -->
+      <div class="ww-wall-scroll" id="wall-view">
+        <div class="ww-wall-grid" id="wall-grid"></div>
+        <div class="ww-wall-empty" id="wall-empty" style="display:none;">
+          <div style="font-size:32px;">✦</div>
+          <div>墙上还空空如也<br/>写下你的第一个愿望，贴上墙吧</div>
+        </div>
+      </div>
+
+      <!-- 扫码视图 -->
+      <div class="ww-qr-view" id="qr-view" style="display:none;">
+        <div class="ww-qr-card">
+          <div class="ww-qr-frame" id="qr-frame"></div>
+          <div class="ww-qr-url">wish.reai.com</div>
+        </div>
+        <div class="ww-qr-state" id="qr-state">扫码打开许愿墙</div>
+        <div class="ww-qr-hint" id="qr-hint">用手机扫码，在许愿墙发布你的愿望</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗挂载点 -->
+  <div id="modal-mount"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script>
+    const WALL_URL = "https://wish.reai.com";
+    const TONES = ["lime","pink","blue","orange","paper","lavender"];
+    const CAT_LABELS = {life:"生活",work:"工作",create:"创造",learn:"学习"};
+
+    // ---- 本地愿望（mockup 用内存；插件用 storage.kv 持久化）----
+    const wishes = [];
+
+    // ---- DOM ----
+    const draftEl = document.getElementById("draft");
+    const nickEl = document.getElementById("nickname");
+    const catsEl = document.getElementById("cats");
+    const counterEl = document.getElementById("counter");
+    const postBtn = document.getElementById("post-btn");
+    const wallGrid = document.getElementById("wall-grid");
+    const wallEmpty = document.getElementById("wall-empty");
+    const qrFrame = document.getElementById("qr-frame");
+    const qrStateEl = document.getElementById("qr-state");
+    const qrHintEl = document.getElementById("qr-hint");
+    const wallView = document.getElementById("wall-view");
+    const qrView = document.getElementById("qr-view");
+    const modalMount = document.getElementById("modal-mount");
+
+    let category = "life";
+
+    // ---- 分类切换 ----
+    catsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".ww-cat");
+      if (!btn) return;
+      catsEl.querySelectorAll(".ww-cat").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      category = btn.dataset.cat;
+      updateQR();
+    });
+
+    // ---- 字数 ----
+    draftEl.addEventListener("input", () => {
+      const len = draftEl.value.length;
+      counterEl.textContent = len + "/200";
+      counterEl.classList.toggle("is-over", len > 200);
+      updateQR();
+    });
+
+    // ---- 贴上墙 ----
+    postBtn.addEventListener("click", () => {
+      const text = draftEl.value.trim();
+      if (!text || text.length < 3) return;
+      const wish = {
+        id: "w_" + Date.now(),
+        text,
+        category,
+        nickname: nickEl.value.trim() || "匿名",
+        tone: TONES[Math.floor(Math.random() * TONES.length)],
+        rotate: (Math.random() * 5 - 2.5).toFixed(1),
+        time: new Date().toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+      };
+      wishes.unshift(wish);
+      renderWall();
+      // 清空表单
+      draftEl.value = "";
+      counterEl.textContent = "0/200";
+      updateQR();
+      draftEl.focus();
+    });
+
+    // ---- 渲染墙 ----
+    function renderWall() {
+      wallEmpty.style.display = wishes.length ? "none" : "flex";
+      wallGrid.innerHTML = wishes.map(w => `
+        <div class="ww-card tone-${w.tone}" style="transform:rotate(${w.rotate}deg)" data-id="${w.id}">
+          <div class="ww-card-text">${esc(w.text)}</div>
+          <div class="ww-card-foot">
+            <span class="ww-card-author">—— ${esc(w.nickname)}</span>
+            <span class="ww-card-cat">${CAT_LABELS[w.category]||w.category}</span>
+          </div>
+        </div>`).join("");
+    }
+
+    // ---- 点卡片 → 弹窗 ----
+    wallGrid.addEventListener("click", (e) => {
+      const card = e.target.closest(".ww-card");
+      if (!card) return;
+      const w = wishes.find(x => x.id === card.dataset.id);
+      if (!w) return;
+      showModal(w);
+    });
+
+    function showModal(w) {
+      const overlay = document.createElement("div");
+      overlay.className = "ww-modal-overlay";
+      overlay.innerHTML = `
+        <div class="ww-modal tone-${w.tone}" style="position:relative;">
+          <button class="ww-modal-close">✕</button>
+          <span class="ww-modal-cat">${CAT_LABELS[w.category]||w.category}</span>
+          <div class="ww-modal-text">${esc(w.text)}</div>
+          <div class="ww-modal-foot">
+            <span class="ww-modal-author">—— ${esc(w.nickname)}</span>
+            <span class="ww-modal-time">${w.time}</span>
+          </div>
+        </div>`;
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay || e.target.closest(".ww-modal-close")) overlay.remove();
+      });
+      modalMount.appendChild(overlay);
+    }
+
+    function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+    // ---- tab 切换 ----
+    document.querySelector(".ww-wall-tabs").addEventListener("click", (e) => {
+      const tab = e.target.closest(".ww-tab");
+      if (!tab) return;
+      document.querySelectorAll(".ww-tab").forEach(t => t.classList.remove("is-active"));
+      tab.classList.add("is-active");
+      const isQR = tab.dataset.tab === "qr";
+      wallView.style.display = isQR ? "none" : "";
+      qrView.style.display = isQR ? "flex" : "none";
+    });
+
+    // ---- QR ----
+    function updateQR() {
+      const draft = draftEl.value.trim();
+      const text = draft ? WALL_URL + "?" + new URLSearchParams({draft, category}) : WALL_URL;
+      const qr = qrcode(0, "M");
+      qr.addData(text); qr.make();
+      qrFrame.innerHTML = qr.createSvgTag({cellSize:4,margin:0});
+      if (draft) { qrStateEl.textContent = "扫码发布这条愿望"; qrHintEl.textContent = "手机扫码后愿望已预填好，确认即可发布"; }
+      else { qrStateEl.textContent = "扫码打开许愿墙"; qrHintEl.textContent = "用手机扫码，在许愿墙发布你的愿望"; }
+    }
+
+    // ---- 工具栏 ----
+    document.getElementById("toggle-theme").addEventListener("click", () => {
+      const cur = document.documentElement.dataset.theme;
+      const next = cur === "light" ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      document.getElementById("toggle-theme").textContent = next === "light" ? "🌙 Dark" : "☀️ Light";
+    });
+    let loggedIn = true;
+    const userEl = document.getElementById("user");
+    document.getElementById("toggle-login").addEventListener("click", () => {
+      loggedIn = !loggedIn;
+      userEl.className = "ww-user" + (loggedIn ? "" : " is-out");
+      userEl.innerHTML = loggedIn
+        ? '<span class="ww-user-name">张三</span>'
+        : '<span class="ww-user-name">未登录</span>';
+    });
+
+    // ---- 启动 ----
+    renderWall();
+    updateQR();
+  </script>
+</body>
+</html>

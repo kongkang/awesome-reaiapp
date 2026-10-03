@@ -1,0 +1,83 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.agents-tasks",
+  "version": "1.0.1-dev.1",
+  "publisherId": "reai",
+  "name": "Agents · 任务",
+  "description": "像用 Claude Code 那样：开一件事，做完归档（静态演示界面）",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Official",
+    "tagline": "像用 Claude Code 那样：开一件事，做完归档",
+    "longDescription": "同一个 agent，按目录切换着干活。每个对话只解决一件事，完成就归档——归档后它会变成 Agents·IM 那条流里的一张锚点卡，两边看的是同一批对话，只是一个按人切、一个按目录切。",
+    "capabilities": [
+      { "label": "侧栏会多一项", "detail": "Agents · 任务" },
+      { "label": "键盘不会变", "detail": "当前版本不注册硬件键；New 键落点将随 command 贡献点接入后提供" },
+      { "label": "和 Agents·IM 的关系", "detail": "共享同一份对话数据，装一个也能用，装两个互为入口" }
+    ],
+    "screenshots": [
+      { "gradient": "linear-gradient(135deg,#5c8ce0,#7bb0f7)", "caption": "按目录分组：进行中在上，做完的下沉", "hasVideo": true },
+      { "gradient": "linear-gradient(135deg,#4678c8,#64a0e0)", "caption": "任务详情：只显示这件事的那段对话" },
+      { "gradient": "linear-gradient(135deg,#5c9cd0,#80c0e8)", "caption": "New 键：先把话问清楚再开始" }
+    ]
+  },
+  "targets": [
+    { "platform": "macos", "architectures": ["aarch64", "x86_64"] },
+    { "platform": "windows", "architectures": ["aarch64", "x86_64"] }
+  ],
+  "hostApi": { "range": ">=1.4.0 <2.0.0" },
+  "requires": {
+    "hostCapabilities": ["surface.main@1", "sidebar.item@1", "titlebar.action@1", "apps.intent@1"],
+    "hardwareServices": [],
+    "appIntents": [
+      {
+        "appId": "com.reai.agents-im",
+        "intent": "open-conversation",
+        "version": "1.0.0",
+        "required": false,
+        "purpose": "任务详情坞「在 IM 里看上下文」：跳到该 agent 在 Agents·IM 的会话（B6-26）",
+        "requiredFor": []
+      }
+    ]
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": { "activate": "default.activate", "deactivate": "default.deactivate" }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": { "policyVersion": 1, "endpoints": [] },
+  "billing": { "mode": "none" },
+  "data": { "privateStores": [], "imports": [], "exports": [] },
+  "dataCompatibility": { "rollbackFloor": "1.0.0" },
+  "contributes": {
+    "surfaces": [
+      { "id": "main", "componentId": "ui", "location": "app.main", "title": "Agents · 任务" }
+    ],
+    "sidebarItems": [
+      { "id": "agents-tasks", "label": "Agents · 任务", "icon": "assets/icon.png", "opens": "surface:main" }
+    ],
+    "titlebarActions": [
+      {
+        "id": "add-project",
+        "label": "把一个文件夹加成项目",
+        "icon": "plus",
+        "text": "新增项目",
+        "showOnTitlebarHover": true,
+        "intent": { "type": "add-project" }
+      }
+    ]
+  }
+}

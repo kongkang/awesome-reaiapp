@@ -1,0 +1,408 @@
+/* @reai/chat-ui —— Agent 对话界面三件套：消息气泡 / 附件卡 / 输入坞。
+   数值逐条照设计稿 design/VoiceType_UI_Designs.html :1528-1565（.chat-msgs … .chat-input），
+   类名与稿一致便于 1:1 对账。颜色只认宿主注入的主题 token，写死值只是脱离宿主时的
+   浅色兜底；accent 底上的白字按稿写死 #fff。
+
+   两个容器变量（对稿 --dock-x / --dock-h）：
+     --chat-dock-x  消息区与输入坞的左右内边距（默认 32px）——消费方在容器 / 断点里改它，
+                    不要用同名类规则覆盖，那会变成靠样式表加载顺序决胜负；
+     --chat-dock-h  输入坞高度（默认 72px）。
+   本文件没有任何内联 style；波形条高度由 JS 走 CSSOM 赋值（插件 CSP 无 'unsafe-inline'）。 */
+
+.chat-msgs {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px var(--chat-dock-x, 32px);
+}
+
+.chat-msg {
+  min-width: 0;
+  max-width: 85%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chat-msg.from-ai {
+  align-self: flex-start;
+}
+
+.chat-msg.from-user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-bubble {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary, #1c1c2e);
+  /* 用户原文保留空白；AI Markdown 在下方使用块级排版。 */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-markdown { white-space: normal; }
+.chat-markdown > :first-child { margin-top: 0; }
+.chat-markdown > :last-child { margin-bottom: 0; }
+.chat-markdown p, .chat-markdown ul, .chat-markdown ol,
+.chat-markdown blockquote, .chat-markdown pre, .chat-markdown table { margin: .65em 0; }
+.chat-markdown h1, .chat-markdown h2, .chat-markdown h3,
+.chat-markdown h4, .chat-markdown h5, .chat-markdown h6 { margin: 1em 0 .4em; font-size: 1.1em; line-height: 1.4; }
+.chat-markdown h1 { font-size: 1.3em; }
+.chat-markdown h2 { font-size: 1.2em; }
+.chat-markdown ul, .chat-markdown ol { padding-left: 1.6em; }
+.chat-markdown ul { list-style: disc; }
+.chat-markdown ol { list-style: decimal; }
+.chat-markdown li + li { margin-top: .25em; }
+.chat-markdown li > ul, .chat-markdown li > ol { margin: .25em 0; }
+.chat-markdown blockquote { margin-left: 0; padding-left: .8em; border-left: 3px solid var(--accent-glow, rgba(92,92,224,.22)); }
+.chat-markdown code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; background: var(--card-bg, rgba(255,255,255,.8)); border-radius: 4px; padding: .1em .3em; }
+.chat-markdown pre { max-width: 100%; overflow-x: auto; padding: .75em; border-radius: 8px; background: var(--card-bg, rgba(255,255,255,.8)); white-space: pre; overflow-wrap: normal; }
+.chat-markdown pre code { background: transparent; padding: 0; }
+.chat-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.chat-markdown th, .chat-markdown td { border: 1px solid var(--divider, rgba(92,92,224,.08)); padding: .4em .65em; min-width: 5em; }
+.chat-markdown th { background: var(--card-bg, rgba(255,255,255,.8)); text-align: left; }
+.chat-markdown .chat-align-left { text-align: left; }
+.chat-markdown .chat-align-center { text-align: center; }
+.chat-markdown .chat-align-right { text-align: right; }
+.chat-markdown hr { border: 0; border-top: 1px solid var(--divider, rgba(92,92,224,.08)); margin: 1em 0; }
+
+.chat-msg.from-ai .chat-bubble {
+  background: var(--accent-soft, rgba(92, 92, 224, .07));
+  border-bottom-left-radius: 4px;
+}
+
+.chat-msg.from-user .chat-bubble {
+  background: var(--accent, #5c5ce0);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-ts {
+  padding: 0 6px;
+  font-size: 10px;
+  color: var(--text-tertiary, #a5a5b8);
+}
+
+.chat-msg.from-user .chat-ts {
+  text-align: right;
+}
+
+.chat-devmeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-3px);
+  transition: opacity .12s, transform .12s, visibility .12s;
+  vertical-align: 1px;
+}
+
+.chat-msg:hover .chat-devmeta,
+.chat-msg:focus-within .chat-devmeta {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.chat-dev-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--accent-soft, rgba(92,92,224,.07));
+  border: 1px solid var(--accent-glow, rgba(92,92,224,.22));
+  color: var(--accent, #5c5ce0);
+  font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .4px;
+}
+
+.chat-dev-chip.tok {
+  background: transparent;
+  border-color: var(--divider, rgba(139,139,168,.18));
+  color: var(--text-tertiary, #a5a5b8);
+  font-weight: 600;
+}
+
+/* ── 附件卡（稿 cardHTML：file / image / audio）── */
+.chat-card {
+  max-width: 240px;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid var(--divider, rgba(92, 92, 224, .08));
+  border-radius: 12px;
+}
+
+.chat-card-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--accent-soft, rgba(92, 92, 224, .07));
+}
+
+.chat-card-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--divider, rgba(92, 92, 224, .08));
+  font-size: 14px;
+  line-height: 1;
+}
+
+.chat-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #1c1c2e);
+}
+
+.chat-card-meta {
+  margin-top: 1px;
+  font-size: 10px;
+  color: var(--text-tertiary, #a5a5b8);
+}
+
+.chat-card-img {
+  width: 200px;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--divider, rgba(92, 92, 224, .08));
+  color: var(--text-tertiary, #a5a5b8);
+  font-size: 11px;
+}
+
+.chat-card-audio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--accent-soft, rgba(92, 92, 224, .07));
+}
+
+.chat-card-play {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  background: var(--accent, #5c5ce0);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.chat-card-play:disabled {
+  cursor: default;
+}
+
+.chat-card-play svg {
+  display: block;
+  pointer-events: none;
+}
+
+.chat-card-wave {
+  flex: 1;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+}
+
+.chat-card-wave i {
+  display: block;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--text-tertiary, #a5a5b8);
+  opacity: .4;
+}
+
+.chat-card-dur {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-tertiary, #a5a5b8);
+}
+
+/* ── 工具状态卡 / 能力卡（稿没有这两张卡，#513 起自创）──
+   token 必须落在宿主注入合同（driver-v2 src-tauri/src/theme/tokens.rs）里：这里曾用
+   --border/--surface/--text/--text-2 四个不存在的名字 + 图标底硬编码 #fff，暗色主题下
+   整卡回落浅色——白色图标方块 + 深字深底，「执行中」几乎不可见。fallback 一律照抄
+   宿主浅色真值（同文件头约定）。 */
+.chat-status-card{width:min(390px,100%);border:1px solid var(--divider,rgba(92,92,224,.08));background:var(--card-bg,rgba(255,255,255,.8));border-radius:13px;padding:12px 14px;box-sizing:border-box;color:var(--text-primary,#1c1c2e)}
+.chat-status-card.tool{display:flex;align-items:center;gap:9px;background:var(--accent-soft,rgba(92,92,224,.07));border-color:transparent;font-size:12px}
+.chat-status-card.tool[data-status="failed"]{background:var(--alert-soft,rgba(255,59,48,.07));color:var(--alert,#ff3b30)}
+.chat-status-card.tool[data-status="failed"] .chat-status-icon{color:var(--alert,#ff3b30)}
+.chat-status-icon{width:20px;height:20px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--card-bg,rgba(255,255,255,.8));color:var(--accent,#5c5ce0);font-weight:700;flex-shrink:0}
+.chat-status-label{min-width:0;overflow-wrap:anywhere;color:var(--text-primary,#1c1c2e)}
+.chat-status-title{font-size:13px;font-weight:700}.chat-status-detail{font-size:12px;line-height:1.55;color:var(--text-secondary,#6b6b80);margin-top:5px}.chat-status-action{margin-top:11px;border:0;border-radius:9px;background:var(--accent,#5c5ce0);color:#fff;padding:8px 12px;font:inherit;font-weight:650;cursor:pointer}.chat-status-action:hover{filter:brightness(.96)}
+/* 只有转圈图标整颗旋转；地球仪不转外形，只让表面横向平移（见 .chat-globe）。 */
+.chat-status-card[data-status="running"] .chat-status-head .chat-status-icon[data-icon="loader"]{animation:chat-status-spin 1s linear infinite}
+@keyframes chat-status-spin{to{transform:rotate(360deg)}}
+/* 地球仪：外轮廓与赤道不动，裁剪圆里的经线与陆地横移一个周期（18 个单位）后无缝循环。 */
+.chat-globe-surface{transform:translateX(0)}
+.chat-globe[data-spinning="true"] .chat-globe-surface{animation:chat-globe-turn 2.8s linear infinite}
+@keyframes chat-globe-turn{to{transform:translateX(-18px)}}
+@media(prefers-reduced-motion:reduce){.chat-status-icon[data-icon="loader"],.chat-globe[data-spinning="true"] .chat-globe-surface{animation:none!important}}
+/* ── 过程折叠（稿 .voice-process）：每个回合一条，折叠 = 在做 / 做了什么 + 用时，展开 = 逐次调用明细 ── */
+.chat-status-card.tool-group{display:block;width:max-content;min-width:min(260px,100%);max-width:100%;padding:0;border:1px solid var(--divider,rgba(92,92,224,.08));border-radius:10px;background:var(--card-bg,rgba(255,255,255,.8));color:var(--text-secondary,#6b6b80);font-size:12px;overflow:hidden}
+.chat-status-head{display:flex;flex-wrap:wrap;align-items:center;gap:4px 9px;box-sizing:border-box;width:100%;min-height:40px;padding:9px 12px;text-align:left}
+.chat-status-card.tool-group .chat-status-icon{width:auto;height:auto;border-radius:0;background:none;color:var(--accent,#5c5ce0)}
+.chat-status-card.tool-group[data-status="failed"] .chat-status-head .chat-status-icon{color:var(--alert,#ff3b30)}
+.chat-status-card.tool-group .chat-status-head .chat-status-label{flex:1 1 10em;font-weight:500}
+.chat-status-meta{flex:0 1 auto;min-width:0;margin-left:auto;padding-left:12px;font-size:11px;color:var(--text-secondary,#6b6b80);text-align:right;word-break:keep-all;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.chat-status-chevron{display:flex;flex-shrink:0;color:var(--text-secondary,#6b6b80);transition:transform .15s}
+.chat-status-toggle[aria-expanded="true"] .chat-status-chevron{transform:rotate(180deg)}
+@media(prefers-reduced-motion:reduce){.chat-status-chevron{transition:none}}
+/* 刻意：设计规范 §3.5 按钮留白的例外（整行可点的卡片头）：悬停只变色、不铺底色，四周留白由摘要行自己的 padding:9px 12px 提供；
+   焦点框画在卡片内侧（与稿 .voice-process summary:focus-visible 相同），卡片 overflow:hidden 不会裁掉它。 */
+.chat-status-toggle{font:inherit;color:inherit;border:0;background:transparent;cursor:pointer;-webkit-appearance:none;appearance:none;border-radius:10px}
+.chat-status-toggle:hover .chat-status-label,.chat-status-toggle[aria-expanded="true"] .chat-status-label{color:var(--text-primary,#1c1c2e)}
+.chat-status-toggle:hover .chat-status-chevron{color:var(--text-primary,#1c1c2e)}
+.chat-status-toggle:focus-visible{outline:2px solid var(--accent,#5c5ce0);outline-offset:-3px}
+.chat-status-calls{list-style:none;margin:0;border-top:1px solid var(--divider,rgba(92,92,224,.08));padding:8px 12px;max-height:220px;overflow:auto}
+.chat-status-calls[hidden]{display:none}
+.chat-status-call{display:grid;grid-template-columns:14px minmax(0,1fr) auto;align-items:start;column-gap:9px;row-gap:2px;min-width:0;padding:7px 0;line-height:1.6;color:var(--text-secondary,#6b6b80)}
+.chat-status-call .chat-status-icon{width:14px;height:19px;font-size:11px}
+.chat-status-call[data-status="failed"],.chat-status-call[data-status="failed"] .chat-status-icon{color:var(--alert,#ff3b30)}
+.chat-status-call[data-status="completed"]{color:var(--text-primary,#1c1c2e)}
+.chat-status-call-name{grid-column:2;min-width:0;overflow-wrap:anywhere}
+.chat-status-call-duration{grid-column:3;font-variant-numeric:tabular-nums;color:var(--text-secondary,#6b6b80)}
+.chat-status-call-error{grid-column:2 / -1;min-width:0;overflow-wrap:anywhere;white-space:normal;line-height:1.45}
+.chat-status-call.omitted{display:block;font-size:12px;color:var(--text-secondary,#6b6b80)}
+
+/* ── 输入坞（稿 .chat-input-bar = [+][输入框][麦克风]）── */
+.chat-input-bar {
+  flex-shrink: 0;
+  height: var(--chat-dock-h, 72px);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 var(--chat-dock-x, 32px);
+  border-top: 1px solid var(--divider, rgba(92, 92, 224, .08));
+  background: var(--card-bg, rgba(255, 255, 255, .8));
+}
+
+.chat-attach,
+.chat-mic {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--divider, rgba(92, 92, 224, .08));
+  border-radius: 50%;
+  appearance: none;
+  background: transparent;
+  color: var(--text-secondary, #636374);
+  cursor: pointer;
+  font: inherit;
+  line-height: 0;
+  transition: background .15s;
+}
+
+/* 稿画 34px 圆；命中区按无障碍基线补到 44px（同 Voice 插件 .replay-play::after 的先例：
+   透明伪元素向外扩，视觉不变）。 */
+.chat-attach::after,
+.chat-mic::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
+.chat-attach svg,
+.chat-mic svg {
+  display: block;
+  pointer-events: none;
+}
+
+.chat-attach:not(:disabled):hover {
+  background: var(--accent-soft, rgba(92, 92, 224, .07));
+}
+
+.chat-attach:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.chat-mic {
+  border-color: var(--accent, #5c5ce0);
+  background: var(--accent, #5c5ce0);
+  color: #fff;
+}
+
+.chat-mic:not(:disabled):hover {
+  background: color-mix(in srgb, var(--accent, #5c5ce0) 88%, #000);
+  border-color: color-mix(in srgb, var(--accent, #5c5ce0) 88%, #000);
+}
+
+/* 在听：稿没有单独画这一态，只给一圈柔光让人知道它正等你说完。 */
+.chat-mic.is-listening {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #5c5ce0) 25%, transparent);
+}
+
+.chat-mic:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.chat-attach:focus-visible,
+.chat-mic:focus-visible,
+.chat-card-play:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent, #5c5ce0) 42%, transparent);
+  outline-offset: 2px;
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 16px;
+  border: 1px solid var(--divider, rgba(92, 92, 224, .08));
+  border-radius: 20px;
+  outline: none;
+  background: var(--accent-soft, rgba(92, 92, 224, .07));
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary, #1c1c2e);
+}
+
+.chat-input::placeholder {
+  color: var(--text-tertiary, #a5a5b8);
+}
+
+.chat-input:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}

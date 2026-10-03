@@ -1,0 +1,98 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.podcast",
+  "version": "1.0.1-dev.2",
+  "publisherId": "reai",
+  "name": "AI Podcast",
+  "description": "把你关注的来源做成一档只给你听的播客（静态演示界面）",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Media",
+    "tagline": "把你关注的来源做成一档只给你听的播客",
+    "longDescription": "每天早上把你订阅的来源汇总成一段音频，通勤路上听完就知道昨天发生了什么。当前版本是静态界面演示：数据内置、不联网；订阅汇总、真实音频与全局迷你播放器将在后续版本接入。",
+    "capabilities": [
+      { "label": "侧栏会多一项", "detail": "AI Podcast" },
+      { "label": "当前版本", "detail": "静态界面演示：数据内置、不联网；全局迷你播放器尚未启用" },
+      { "label": "当前权限", "detail": "不申请任何权限" }
+    ],
+    "screenshots": [
+      { "gradient": "linear-gradient(135deg,#e05c9c,#f07bb0)", "caption": "今日简报：12 分钟听完", "hasVideo": true },
+      { "gradient": "linear-gradient(135deg,#c84678,#e06498)", "caption": "剧集抽屉：往回翻任意一天" }
+    ]
+  },
+  "targets": [
+    { "platform": "macos", "architectures": ["aarch64", "x86_64"] },
+    { "platform": "windows", "architectures": ["aarch64", "x86_64"] }
+  ],
+  "hostApi": { "range": ">=1.19.0 <2.0.0" },
+  "requires": {
+    "hostCapabilities": ["surface.main@1", "sidebar.item@1", "titlebar.action@1", "metadata.i18n@2"],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "i18n": {
+    "locales": ["zh", "en"],
+    "messages": [
+      { "target": "name", "key": "metadata.name" },
+      { "target": "description", "key": "metadata.description" },
+      { "target": "sidebar.label", "id": "podcast", "key": "metadata.sidebar.podcast.label" },
+      { "target": "surface.title", "id": "main", "key": "metadata.surfaces.main.title" },
+      { "target": "titlebarAction.label", "id": "history", "key": "metadata.actions.history.label" },
+      { "target": "titlebarAction.text", "id": "history", "key": "metadata.actions.history.text" },
+      { "target": "storeListing.category", "key": "metadataV2.category" },
+      { "target": "storeListing.tagline", "key": "metadataV2.tagline" },
+      { "target": "storeListing.longDescription", "key": "metadataV2.longDescription" },
+      { "target": "storeListing.capability.label", "index": 0, "key": "metadataV2.capability0Label" },
+      { "target": "storeListing.capability.detail", "index": 0, "key": "metadataV2.capability0Detail" },
+      { "target": "storeListing.capability.label", "index": 1, "key": "metadataV2.capability1Label" },
+      { "target": "storeListing.capability.detail", "index": 1, "key": "metadataV2.capability1Detail" },
+      { "target": "storeListing.capability.label", "index": 2, "key": "metadataV2.capability2Label" },
+      { "target": "storeListing.capability.detail", "index": 2, "key": "metadataV2.capability2Detail" },
+      { "target": "storeListing.screenshot.caption", "index": 0, "key": "metadataV2.caption0" },
+      { "target": "storeListing.screenshot.caption", "index": 1, "key": "metadataV2.caption1" }
+    ]
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": { "policyVersion": 1, "endpoints": [] },
+  "billing": { "mode": "none" },
+  "data": { "privateStores": [], "imports": [], "exports": [] },
+  "dataCompatibility": { "rollbackFloor": "1.0.0" },
+  "contributes": {
+    "surfaces": [
+      { "id": "main", "componentId": "ui", "location": "app.main", "title": "AI Podcast" }
+    ],
+    "sidebarItems": [
+      { "id": "podcast", "label": "AI Podcast", "icon": "assets/icon.png", "opens": "surface:main" }
+    ],
+    "titlebarActions": [
+      {
+        "id": "history",
+        "label": "查看往期节目",
+        "icon": "clock",
+        "text": "往期",
+        "showOnTitlebarHover": true,
+        "intent": { "type": "toggle-history" }
+      }
+    ]
+  }
+}

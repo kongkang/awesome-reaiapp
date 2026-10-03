@@ -1,0 +1,6 @@
+{
+  "codes": [
+    "MANIFEST_DUPLICATE_ID"
+  ],
+  "note": "同类 id 必须唯一"
+}

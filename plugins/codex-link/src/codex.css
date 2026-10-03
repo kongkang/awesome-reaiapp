@@ -1,0 +1,321 @@
+/* 别名一律指回 Host Token；括号里的兜底值只在浏览器里单独调试时才走得到，
+   所以必须和 Token 的浅色取值逐字一致，否则「浏览器里调得好好的，装进 App 变了个样」。
+   取值源：driver-v2/src-tauri/src/theme/tokens.rs（自动生成，勿手抄成别的值）。
+   见《插件设计规范 v1》§1.3。 */
+:root {
+  --cx-bg: var(--bg, #f4f3f9);
+  --cx-panel: var(--card-bg, rgba(255, 255, 255, 0.8));
+  --cx-text: var(--text-primary, #1c1c2e);
+  --cx-muted: var(--text-secondary, #6b6b80);
+  --cx-border: var(--card-border, rgba(92, 92, 224, 0.1));
+  --cx-accent: var(--accent, #5c5ce0);
+  --cx-accent-soft: var(--accent-soft, rgba(92, 92, 224, 0.07));
+  --cx-hot: var(--alert, #ff3b30);
+  --cx-hot-soft: color-mix(in srgb, var(--cx-hot) 10%, transparent);
+  --cx-alert-soft: var(--alert-soft, rgba(255, 59, 48, 0.07));
+  --cx-alert-line: var(--alert-line, rgba(255, 59, 48, 0.32));
+  --cx-done: var(--bound, #1f9d55);
+  --cx-done-soft: color-mix(in srgb, var(--cx-done) 10%, transparent);
+  --cx-warn: var(--warn, #b3701a);
+  --cx-warn-soft: var(--warn-soft, rgba(179, 112, 26, 0.09));
+  --cx-shadow: 0 18px 55px rgba(32, 28, 64, 0.1);
+}
+
+* { box-sizing: border-box; }
+html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+
+.plugin-main-frame {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding-top: var(--reai-plugin-titlebar-safe-top, 44px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main-body { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+
+.cx-page {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(250px, 28vw, 300px);
+  background: var(--cx-bg);
+  color: var(--cx-text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* 留白对稿（稿 .cx-scroll 24px 收底）：早先主列 80px / 右栏 60px 的底部 padding 在
+   滚动区外面、不随内容滚，列表滚到底会留出一整条死空白，看起来像「没滚到底」。
+   呼吸空间交给 .cx-scroll 自己的 padding-bottom。 */
+.cx-main { display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 100%; min-width: 0; padding: 20px 24px 0; }
+.cx-side { width: 100%; max-width: 100%; min-width: 0; overflow: hidden; border-left: 1px solid var(--cx-border); padding: 20px 16px 16px; background: color-mix(in srgb, var(--cx-panel) 72%, transparent); }
+.cx-head, .cx-side-head, .cx-compose-card header, .cx-compose-card footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cx-head { margin-bottom: 16px; }
+/* 稿 .cx-title：19px 页名 + 11px 副题（早先是 eyebrow + 28px 大标题，比稿重一档）。 */
+.cx-head h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
+.cx-title-s { margin: 3px 0 0; color: var(--cx-muted); font-size: 11px; }
+.cx-side h2, .cx-compose h2, .cx-skills-drawer h2 { margin: 2px 0 0; font-size: 20px; }
+/* 稿 .cx-side-t/.cx-side-s：右栏是「快速开始」小节标题（14px），不是又一块带大标题的板块。 */
+.cx-side-head h2, .cx-skills-drawer .cx-side-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.cx-side-s { margin: 3px 0 0; color: var(--cx-muted); font-size: 11px; line-height: 1.5; }
+/* compose 卡标题例外（稿 .cx-compose-h = 15px）。必须单独写在这条之后覆盖，
+   严禁并进上面那条三处共用的选择器——那会把侧栏与 Skills 抽屉的标题一起改小。 */
+.cx-compose h2 { font-size: 15px; }
+.cx-primary { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 10px; padding: 10px 15px; color: white; background: var(--cx-accent); font-weight: 680; cursor: pointer; box-shadow: 0 7px 18px color-mix(in srgb, var(--cx-accent) 24%, transparent); transition: filter .16s; }
+.cx-primary:hover { filter: brightness(.93); }
+/* 全局 button 基线（规范 §3.1）：把浏览器默认样式归零，视觉一律由具体的类给。
+   少了这条，任何一颗漏写样式的按钮都会顶出灰底黑框，而测试全绿察觉不到。 */
+button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer;
+         -webkit-appearance: none; appearance: none; text-align: inherit; }
+button:disabled { cursor: not-allowed; opacity: .45; }
+button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--cx-accent) 28%, transparent); outline-offset: 2px; }
+
+/* 精灵图必须脱离布局流：`.cx-page` 是两列 grid，光把宽高设成 0 不够——
+   零尺寸元素照样占一个网格格子，会把主内容挤到侧栏那一列去。 */
+.cx-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* 图标基线：线宽 2 对齐 Host 图标组件的默认值，跟标题栏铃铛并排才不显细。
+   见《插件设计规范 v1》§2.2。 */
+.cx-icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 图标按钮档：可视 32px，用透明外扩把可点区域撑到 44px（规范 §3.3）。 */
+.cx-icon-btn { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--cx-muted); cursor: pointer; transition: background-color .16s, color .16s; }
+.cx-icon-btn::after { content: ""; position: absolute; inset: -6px; }
+.cx-icon-btn:hover { background: var(--cx-accent-soft); color: var(--cx-text); }
+
+.cx-conn { display: flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--cx-muted); font-size: 12px; }
+.cx-conn[hidden], .cx-auth-card[hidden] { display: none; }
+.cx-conn .cx-icon-btn, .cx-side-head .cx-icon-btn, .cx-compose-card header .cx-icon-btn { margin-left: auto; }
+.cx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cx-muted); }
+.cx-dot.on { background: var(--cx-done); box-shadow: 0 0 0 4px var(--cx-done-soft); }
+.cx-dot.off { background: var(--cx-hot); }
+.cx-compat, .cx-error { margin: 12px 0; border-radius: 10px; padding: 10px 12px; background: var(--cx-warn-soft); color: var(--cx-warn); }
+.cx-error { background: var(--cx-hot-soft); color: var(--cx-hot); }
+
+.cx-group { margin-top: 28px; }
+.cx-group > h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--cx-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.cx-group > h2 b { min-width: 21px; padding: 1px 6px; border-radius: 99px; background: var(--cx-border); font-size: 11px; text-align: center; }
+/* 档位色对稿：在等你=暖橙（--warn）、干完未读=主题紫（--accent）、执行失败=告警红。
+   早先在等你用红、完成未读用绿，与「失败=红」的语义撞在一起。 */
+.cx-group.hot > h2 { color: var(--cx-warn); }
+.cx-group.done > h2 { color: var(--cx-accent); }
+.cx-group.failed > h2 { color: var(--cx-hot); }
+
+/* 一行任务。左侧 3px 状态色条是扫一眼分档的锚（稿 .cx-row::before 同思路）。 */
+.cx-task { display: flex; align-items: center; gap: 12px; margin: 8px 0; padding: 14px; border: 1px solid var(--cx-border); border-left: 3px solid transparent; border-radius: 12px; background: var(--cx-panel); box-shadow: 0 2px 14px rgba(30, 25, 70, .035); transition: border-color .16s, background-color .16s, transform .16s; }
+.cx-task:hover { border-color: color-mix(in srgb, var(--cx-accent) 45%, var(--cx-border)); transform: translateY(-1px); }
+.cx-task.selected { border-left-color: var(--cx-accent); background: color-mix(in srgb, var(--cx-accent-soft) 45%, var(--cx-panel)); }
+.cx-group.hot .cx-task { border-left-color: var(--cx-warn); border-color: color-mix(in srgb, var(--cx-warn) 34%, transparent); }
+.cx-group.done .cx-task { border-left-color: var(--cx-accent); }
+.cx-group.failed .cx-task { border-left-color: var(--cx-hot); }
+/* 状态徽标（稿 .cx-st）：左起第一位，标签与分组标题各说各的（在等你/完成未读/运行中…）。 */
+.cx-st { flex: none; min-width: 44px; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; text-align: center; white-space: nowrap; }
+.cx-st.hot { background: var(--cx-warn-soft); color: var(--cx-warn); }
+.cx-st.done { background: var(--cx-accent-soft); color: var(--cx-accent); border: 1px solid var(--cx-accent); }
+.cx-st.run { background: var(--cx-done-soft); color: var(--cx-done); }
+.cx-st.idle { background: var(--cx-border); color: var(--cx-muted); }
+.cx-st.failed { background: var(--cx-hot-soft); color: var(--cx-hot); }
+/* 会话号（稿 .cx-id）：等宽小字靠右，完整 id 进 title。 */
+.cx-id { flex: none; color: var(--cx-muted); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.cx-task-body { min-width: 0; flex: 1; }
+.cx-task-title { display: block; width: 100%; overflow: hidden; padding: 0; border: 0; background: none; color: var(--cx-text); cursor: pointer; font-weight: 700; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.cx-task-meta, .cx-task-summary { margin: 3px 0 0; overflow: hidden; color: var(--cx-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.cx-task-summary { color: color-mix(in srgb, var(--cx-text) 72%, var(--cx-muted)); }
+/* 「它在等你什么」（稿 .cx-ask）：只有等待中的会话有，橙色强调 + 警示图标。 */
+.cx-ask { display: flex; align-items: flex-start; gap: 5px; margin: 5px 0 0; overflow: hidden; color: var(--cx-warn); font-size: 11px; line-height: 1.45; }
+.cx-ask .cx-icon { width: 12px; height: 12px; margin-top: 2px; }
+.cx-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; max-width: 230px; }
+.cx-btn, .cx-link, .cx-danger, .cx-far-toggle { min-height: 28px; border: 1px solid var(--cx-border); border-radius: 8px; padding: 6px 10px; background: transparent; color: var(--cx-muted); cursor: pointer; font-size: 12px; transition: background-color .16s, border-color .16s, color .16s; }
+/* 悬停反馈：没有它，用户不确定这东西能不能点（规范 §3.4） */
+.cx-btn:hover:not(:disabled), .cx-link:hover:not(:disabled), .cx-far-toggle:hover:not(:disabled) { border-color: var(--cx-accent); background: var(--cx-accent-soft); color: var(--cx-text); }
+.cx-danger:hover:not(:disabled) { border-color: var(--cx-hot); background: color-mix(in srgb, var(--cx-hot) 18%, transparent); }
+.cx-task-title:hover { color: var(--cx-accent); }
+.cx-skills-fab:hover { filter: brightness(.93); }
+/* 交接按钮（稿 .cx-route）：常显描边胶囊 + 外链图标，不再是悬停才见边框的裸文字。 */
+.cx-link { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 88px; min-height: 28px; border: 1px solid var(--cx-border); border-radius: 8px; background: var(--cx-panel); color: var(--cx-accent); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.cx-link .cx-link-ic { width: 13px; height: 13px; }
+.cx-danger { color: var(--cx-hot); background: var(--cx-hot-soft); }
+.cx-far-toggle { width: 100%; padding: 11px; background: var(--cx-panel); text-align: left; }
+
+.cx-side-head { margin-bottom: 10px; }
+.cx-skill-group { margin-top: 20px; }
+.cx-skill-group h3 { margin: 0 0 7px; overflow: hidden; color: var(--cx-muted); font: 600 11px/1.4 ui-monospace, SFMono-Regular, monospace; text-overflow: ellipsis; white-space: nowrap; }
+/* 稿 .cx-sk：圆角行、悬停浮出卡底——不再是分隔线列表。 */
+.cx-skill { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
+.cx-skill-main { display: block; flex: 1; min-width: 0; padding: 7px 10px; border: 1px solid transparent; border-radius: 9px; text-align: left; }
+.cx-skill-main:hover:not(:disabled) { border-color: var(--cx-border); background: var(--cx-panel); }
+.cx-skill strong, .cx-skill span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-skill strong { font: 650 12px/1.4 ui-monospace, SFMono-Regular, monospace; color: var(--cx-accent); }
+.cx-skill span { margin-top: 2px; color: var(--cx-muted); font-size: 11px; }
+.cx-empty { color: var(--cx-muted); padding: 20px 4px; }
+
+/* 「加入 Action 层」开关（稿 .cx-sk-pin 的拨杆形态）：表达持续状态，不是一次动作。 */
+.cx-sk-hint { margin: 0; color: var(--cx-muted); font-size: 11px; line-height: 1.6; }
+.cx-sk-pin { position: relative; flex: none; width: 34px; height: 20px; border: 1px solid var(--cx-border); border-radius: 999px; background: var(--cx-border); cursor: pointer; transition: background-color .16s, border-color .16s; }
+.cx-sk-pin i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .16s; }
+.cx-sk-pin:hover { border-color: var(--cx-accent); }
+.cx-sk-pin.on { border-color: var(--cx-accent); background: var(--cx-accent); }
+.cx-sk-pin.on i { transform: translateX(14px); }
+
+.cx-skills-fab {
+  position: absolute;
+  z-index: 35;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  display: none;
+  min-height: 46px;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 11px 9px 16px;
+  color: white;
+  background: var(--cx-accent);
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--cx-accent) 36%, transparent);
+}
+.cx-skills-fab b, .cx-drawer-count { display: inline-grid; min-width: 26px; height: 26px; place-items: center; border-radius: 99px; font-size: 12px; }
+.cx-skills-fab b { background: rgba(255, 255, 255, .2); }
+.cx-drawer-count { margin-left: 4px; background: var(--cx-accent-soft); color: var(--cx-accent); vertical-align: 2px; }
+.cx-skills-drawer { display: none; }
+.cx-skills-drawer-panel { position: absolute; inset: 0 0 0 auto; width: min(340px, calc(100% - 24px)); max-width: 100%; overflow-y: auto; border-left: 1px solid var(--cx-border); padding: 28px 22px 50px; background: var(--cx-bg); box-shadow: -18px 0 55px rgba(32, 28, 64, .18); }
+
+.cx-compose { position: absolute; z-index: 50; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 20px; background: rgba(20, 18, 40, .38); backdrop-filter: blur(8px); }
+.cx-compose[hidden] { display: none; }
+.cx-compose-card { width: min(560px, 100%); max-height: calc(100% - 40px); overflow-y: auto; padding: 20px; border: 1px solid var(--cx-border); border-radius: 16px; background: color-mix(in srgb, var(--cx-panel) 94%, var(--cx-bg)); box-shadow: var(--cx-shadow); }
+.cx-compose-card header { padding-bottom: 17px; border-bottom: 1px solid var(--cx-border); }
+.cx-compose-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
+.cx-field { display: grid; gap: 7px; margin-top: 17px; color: var(--cx-muted); font-size: 12px; font-weight: 620; }
+.cx-field-wide { grid-column: 1 / -1; }
+/* 输入类控件底色统一 accent-soft（稿 .cx-nsel/.cx-compose-in/.dirpick-in 同款）；
+   focus 按稿只换描边色，不切底色不加光环。 */
+.cx-select-shell { position: relative; display: flex; align-items: center; min-width: 0; border: 1px solid var(--cx-border); border-radius: 11px; background: var(--cx-accent-soft); color: var(--cx-muted); transition: border-color .16s, box-shadow .16s, background-color .16s; }
+.cx-select-shell:focus-within { border-color: var(--cx-accent); }
+.cx-select-shell > .cx-icon:first-child { margin-left: 12px; }
+.cx-select-chevron { position: absolute; right: 11px; pointer-events: none; }
+.cx-compose-card select { min-width: 0; flex: 1; border: 0; padding: 11px 36px 11px 12px; background: transparent; color: var(--cx-text); appearance: none; outline: 0; }
+/* 不设 min-height：设计稿给的是 rows=4，写死一个更高的最小高度等于把 rows 架空
+   （改成 4 行看起来毫无变化，1:1 就成了纸面上的）。要多写几行的人可以自己拖。 */
+.cx-compose-card textarea { width: 100%; border: 1px solid var(--cx-border); border-radius: 11px; padding: 12px 13px; background: var(--cx-accent-soft); color: var(--cx-text); line-height: 1.6; resize: vertical; transition: border-color .16s, box-shadow .16s, background-color .16s; }
+.cx-compose-card textarea:focus { border-color: var(--cx-accent); outline: 0; }
+.cx-field small { border-radius: 9px; padding: 9px 10px; background: var(--cx-warn-soft); color: var(--cx-warn); font-weight: 500; }
+
+/* 目录选择（设计稿 .dirpick*）：一行「带搜索的输入框」＋并排的「选文件夹…」，
+   下面是按需展开的候选列表。
+   列表空着时整块不占位——.cx-field 是 grid，靠 display:none 让那道 gap 一起收掉，
+   等价于设计稿里的 .dirpick-list:empty{margin-top:0}。 */
+.dirpick { display: flex; align-items: center; gap: 8px; }
+.dirpick-in { display: flex; align-items: center; flex: 1; gap: 7px; min-width: 0; padding: 8px 11px; border: 1px solid var(--cx-border); border-radius: 10px; background: var(--cx-accent-soft); color: var(--cx-muted); transition: border-color .16s, box-shadow .16s, background-color .16s; }
+.dirpick-in:focus-within { border-color: var(--cx-accent); }
+.dirpick-in input { flex: 1; min-width: 0; border: 0; padding: 0; background: none; color: var(--cx-text); font: inherit; font-size: 12.5px; font-weight: 400; outline: 0; }
+.dirpick-in input::placeholder { color: var(--cx-muted); }
+.dirpick-list { display: flex; flex-direction: column; gap: 2px; max-height: 128px; overflow-y: auto; }
+.dirpick-list:empty { display: none; }
+.dirpick-it { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border-radius: 8px; color: var(--cx-muted); cursor: pointer; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: left; }
+.dirpick-it > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dirpick-it:hover { background: var(--cx-accent-soft); }
+.dirpick-it.sel { background: var(--cx-accent-soft); color: var(--cx-accent); font-weight: 600; }
+.dirpick-it .dpk-ic { width: 13px; height: 13px; color: var(--cx-muted); }
+.dirpick-it.sel .dpk-ic { color: var(--cx-accent); }
+.dirpick-empty { margin: 0; padding: 8px 10px; color: var(--cx-muted); font-size: 11.5px; font-weight: 500; }
+/* 只读给读屏：选中的目录只体现在 placeholder 上，眼睛看得见、读屏听不见，
+   靠这条播报补上。不能用 display:none，那会让它彻底不进无障碍树。 */
+.cx-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* 「选文件夹…」（设计稿 .dirpick-btn）：圆角取 10px 与并排的 .dirpick-in 一致。 */
+.dirpick-btn { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 8px 12px; border: 1px solid var(--cx-border); border-radius: 10px; background: transparent; color: var(--cx-muted); font: inherit; font-size: 12px; cursor: pointer; transition: border-color .16s, color .16s; }
+.dirpick-btn:hover:not(:disabled) { border-color: var(--cx-accent); color: var(--cx-accent); }
+.cx-model-status { min-height: 18px; margin-top: 7px; color: var(--cx-muted); font-size: 11px; }
+/* 档位预设对不上当前 Codex 时的说明。用告警底色，因为它说的是「你以为会用 X，实际用了 Y」。 */
+.cx-preset-note { margin-top: 7px; border-radius: 9px; padding: 8px 10px; background: var(--cx-warn-soft); color: var(--cx-warn); font-size: 11.5px; line-height: 1.6; }
+.cx-inline-action { padding: 0; color: var(--cx-accent); font-weight: 650; }
+.cx-compose-progress { margin-top: 15px; border-radius: 10px; padding: 10px 12px; background: var(--cx-accent-soft); color: var(--cx-accent); font-size: 12px; }
+.cx-compose-progress.fail { background: var(--cx-hot-soft); color: var(--cx-hot); }
+.cx-compose.is-pending .cx-compose-progress::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: cx-spin .8s linear infinite; vertical-align: -1px; }
+.cx-compose-card footer { margin-top: 18px; }
+.cx-compose-card footer span { color: var(--cx-muted); font-size: 11px; }
+/* 键帽：设计稿把 Enter / Shift+Enter / Esc 包在 <i> 里单独给了底色，别当成普通文字 */
+.cx-compose-card footer i { display: inline-block; border-radius: 4px; padding: 1px 5px; background: var(--cx-border); color: var(--cx-text); font-size: 10px; font-style: normal; }
+.cx-compose-card [disabled] { opacity: .5; }
+@keyframes cx-spin { to { transform: rotate(360deg); } }
+/* D-4 任务详情。审批只在这一层出现，列表行内没有。
+   尺寸与配色对齐设计稿 .cx-detail / .cx-d-card 一组；卡片底色沿用新任务卡的做法，
+   因为 Host Token 里没有 bg-elevated，直接写 #fff 会在深色主题下白得刺眼。 */
+.cx-detail { position: absolute; z-index: 55; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: rgba(12, 12, 20, .34); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.cx-detail[hidden] { display: none; }
+.cx-d-card { width: min(400px, 100%); max-height: calc(100% - 48px); overflow-y: auto; padding: 18px; border: 1px solid var(--cx-border); border-radius: 16px; background: color-mix(in srgb, var(--cx-panel) 94%, var(--cx-bg)); box-shadow: 0 24px 60px rgba(0, 0, 0, .22); }
+/* 卡片自己接管焦点（打开详情时不该把破坏性的「拒绝」设成默认焦点），但它不是可点控件，不画焦点环 */
+.cx-d-card:focus { outline: none; }
+.cx-d-t { margin: 0; color: var(--cx-text); font-size: 14px; font-weight: 600; }
+/* 设计稿这里是 --text-tertiary，但那只在稿子的白卡上成立（见稿内 --bg-elevated 那条回稿）。
+   Host 的卡片是主题面板色，照抄过来对比度只剩 2.1:1——而这行承载目录、会话号和
+   「还有 N 条待审批」这类审批屏上的操作信息，看不清不行。沿用 --text-secondary。 */
+.cx-d-m { margin: 6px 0 0; overflow-wrap: anywhere; color: var(--cx-muted); font-size: 11.5px; line-height: 1.6; }
+.cx-d-ask { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; border: 1px solid var(--cx-alert-line); border-radius: 10px; padding: 10px 12px; background: var(--cx-alert-soft); color: var(--cx-text); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+/* 图标不额外上色，跟着 .cx-d-ask 的文本色走——警示由底色和描边表达（设计稿同此） */
+.cx-d-ask .cx-icon { width: 14px; height: 14px; margin-top: 3px; }
+/* 这一页答不了的等待项：说明它是什么、该去哪儿办，但不是现在要你决策的那条，所以压低 */
+.cx-d-ask.mut { border-color: var(--cx-border); background: var(--cx-accent-soft); color: var(--cx-muted); }
+.cx-d-ft { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.cx-d-ft button { min-width: 72px; justify-content: center; text-align: center; }
+
+.cx-toast { position: absolute; z-index: 60; right: 24px; bottom: 24px; max-width: min(420px, calc(100% - 48px)); padding: 11px 15px; border-radius: 10px; color: white; background: var(--cx-done); box-shadow: var(--cx-shadow); }
+.cx-toast.fail { background: var(--cx-hot); }
+
+@media (max-width: 760px) {
+  .cx-page { grid-template-columns: 1fr; }
+  .cx-main { padding: 20px 20px 50px; }
+  .cx-side { display: none; }
+  .cx-skills-fab { display: inline-flex; }
+  .cx-skills-drawer:not([hidden]) { position: absolute; z-index: 45; inset: 0; display: block; background: rgba(20, 18, 40, .3); backdrop-filter: blur(5px); }
+}
+
+@media (max-width: 640px) {
+  .cx-head h1 { font-size: 24px; }
+  .cx-task { align-items: flex-start; flex-direction: column; }
+  .cx-actions { justify-content: flex-start; max-width: none; }
+  .cx-compose-card footer { align-items: flex-end; flex-direction: column; }
+}
+
+@media (max-width: 520px) {
+  .cx-detail { padding: 20px 12px 12px; }
+  .cx-d-card { max-height: calc(100% - 24px); }
+  .cx-compose { align-items: end; padding: 12px; }
+  .cx-compose-card { max-height: calc(100% - 24px); padding: 20px 16px; border-radius: 16px; }
+  .cx-compose-grid { grid-template-columns: 1fr; gap: 0; }
+  .cx-compose-card footer { align-items: stretch; }
+  .cx-compose-card footer .cx-primary { justify-content: center; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
+
+/* B6-50 r3-note（稿 3080-3081 逐字）：1px dashed divider、12px 圆角、11.5px/1.75、
+   text-secondary、accent-soft 底；margin 对稿 style="margin:14px 0 4px"。 */
+.cx-r3-note b { color: var(--cx-text, #1c1c2e); }
+.cx-r3-note { border: 1px dashed var(--cx-line, rgba(28,28,46,.12)); border-radius: 12px; padding: 12px 14px; font-size: 11.5px; line-height: 1.75; color: var(--cx-muted, #6b6b7a); background: color-mix(in srgb, var(--cx-accent, #5c5ce0) 7%, transparent); margin: 14px 0 4px; }
+
+/* Login authorization is intentionally prominent; normal status stays in the heading. */
+.cx-auth-card { background: #1c1c1f; color: #fff; border-radius: 16px; padding: 18px 20px; margin: 0 0 16px; }
+.cx-auth-card h2 { color: #fff; margin: 0 0 8px; font-size: 16px; }
+.cx-auth-card p { color: #c2c2c8; margin: 0 0 14px; font-size: 13px; line-height: 1.6; }
+.cx-auth-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.cx-auth-actions button { min-height: 40px; border-radius: 9px; padding: 9px 15px; cursor: pointer; font: inherit; }
+.cx-auth-primary { background: #fff; color: #1c1c1f; border: 1px solid #fff; }
+.cx-auth-secondary { background: transparent; color: #fff; border: 1px solid #606066; }
+.cx-auth-actions button:disabled { opacity: .55; cursor: wait; }
+.cx-auth-actions button:focus-visible, .cx-auth-code:focus-visible { outline: 2px solid #aaa3ff; outline-offset: 3px; }
+.cx-auth-code { display: inline-block; user-select: all; font: 600 24px ui-monospace, monospace; letter-spacing: .12em; background: #303035; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
+.cx-load-more, .cx-skills-project { padding: 10px; border: 1px solid var(--cx-border); border-radius: 8px; background: var(--cx-panel); color: var(--cx-muted); cursor: pointer; font: inherit; }
+.cx-load-more { width: 100%; margin-top: 10px; }
+.cx-skills-project { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; margin-bottom: 10px; }
+
+.cx-scroll { flex: 1; min-height: 0; padding-bottom: 24px; overflow-y: auto; }
+.cx-head, .cx-auth-card { flex-shrink: 0; }

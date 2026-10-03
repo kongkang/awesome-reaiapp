@@ -1,0 +1,194 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.code-worker",
+  "version": "0.2.1",
+  "publisherId": "4d8a4ddb-2293-4b11-9ef4-3f24f117998c",
+  "oauthAppId": "dG97j526ryUf5avLvnUOBNaV0YnhHbNc",
+  "name": "AI 代码编排",
+  "description": "按大任务查看子任务、协作角色与 Agent 投影，读取完整编排 Skill。",
+  "icon": "assets/icon.png",
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64"
+      ]
+    },
+    {
+      "platform": "windows",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.20.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "commands@1",
+      "storage.kv@1",
+      "metadata.i18n@1",
+      "apps.service@1",
+      "apps.gateway@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": [],
+    "services": [
+      {
+        "id": "com.reai.feedback-board/planned@1",
+        "version": "^1.0.0",
+        "required": true,
+        "purpose": "将本机反馈看板中已计划的人类需求同步到任务分配池",
+        "requiredFor": [
+          "surface:main"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "id": "apps.gateway@1",
+      "purpose": "允许同机 Agent 使用管理员签发的独立连接读取和更新授权任务",
+      "required": true
+    }
+  ],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "preferences",
+        "schemaVersion": 1
+      },
+      {
+        "id": "tasks",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "0.1.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "AI 代码编排"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "code-worker",
+        "label": "AI 代码编排",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "commands": [
+      {
+        "id": "com.reai.code-worker.back-to-root",
+        "componentId": "ui",
+        "title": "返回全局编排看板",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "timeoutMs": 3000,
+        "supportsCancellation": false,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host"
+        ]
+      }
+    ],
+    "services": [
+      {
+        "id": "com.reai.code-worker/agent@1",
+        "version": "1.0.0",
+        "componentId": "ui",
+        "methods": [
+          {
+            "id": "invoke",
+            "inputSchema": {
+              "type": "object"
+            },
+            "outputSchema": {
+              "type": "object"
+            },
+            "timeoutMs": 15000,
+            "supportsCancellation": true
+          }
+        ]
+      }
+    ]
+  },
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadata.name"
+      },
+      {
+        "target": "description",
+        "key": "metadata.description"
+      },
+      {
+        "target": "surface.title",
+        "id": "main",
+        "key": "metadata.name"
+      },
+      {
+        "target": "sidebar.label",
+        "id": "code-worker",
+        "key": "metadata.name"
+      },
+      {
+        "target": "command.title",
+        "id": "com.reai.code-worker.back-to-root",
+        "key": "metadata.back"
+      }
+    ]
+  }
+}

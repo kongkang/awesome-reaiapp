@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "name": "文本编辑器",
+    "description": "本地 Markdown、代码与文件差异查看工具",
+    "surfaceTitle": "文本编辑器",
+    "sidebarLabel": "文本编辑器",
+    "pickWorkspaceLabel": "打开本地工作文件夹",
+    "pickWorkspaceText": "打开文件夹"
+  }
+}

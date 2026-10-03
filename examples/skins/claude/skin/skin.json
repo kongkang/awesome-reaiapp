@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "name": "Claude Studio Demo",
+    "description": "顶部工作室导航、底部插件 Dock 与编辑式页面编排"
+  },
+  "shell": {
+    "variant": "top-bar-bottom-dock",
+    "brand": { "wordmark": "Claude", "kicker": "STUDIO" },
+    "primaryOrder": ["home", "device", "extstore", "installed", "terminal", "settings", "account"],
+    "searchPlaceholder": "Search your workspace"
+  },
+  "layout": {
+    "railWidth": 76,
+    "topbarHeight": 118,
+    "dockHeight": 72,
+    "radius": 16,
+    "density": "comfortable",
+    "pagePreset": "editorial"
+  },
+  "tokens": {
+    "light": {
+      "accent": "#984a31", "accent-glow": "rgba(152,74,49,.22)", "accent-soft": "rgba(152,74,49,.09)",
+      "alert": "#b8382d", "alert-line": "rgba(184,56,45,.34)", "alert-soft": "rgba(184,56,45,.09)",
+      "bar-bg": "rgba(253,249,243,.92)", "bar-border": "rgba(83,58,42,.11)", "bar-shadow": "0 1px 8px rgba(83,58,42,.08)",
+      "bg": "#f7f1e8", "bound": "#287154", "bound-line": "rgba(40,113,84,.34)", "bound-soft": "rgba(40,113,84,.1)",
+      "cap-accent": "#984a31", "cap-bg": "#45352c", "cap-dim": "rgba(250,241,232,.55)", "cap-shadow": "0 4px 20px rgba(69,53,44,.25)", "cap-text": "#fbf2e9", "cap-wave": "rgba(223,151,119,.72)",
+      "card-bg": "rgba(255,252,247,.86)", "card-border": "rgba(83,58,42,.12)", "card-shadow": "0 8px 32px rgba(83,58,42,.09)",
+      "desk-bg": "linear-gradient(160deg,#eadbca,#d8c1ab 42%,#c1a085 72%,#9f7c62)", "divider": "rgba(83,58,42,.11)",
+      "panel-bg": "#fffaf4", "panel-border": "rgba(83,58,42,.13)", "panel-shadow": "0 12px 48px rgba(83,58,42,.13)", "panel-sub": "#715f52", "panel-text": "#30261f",
+      "scroll-thumb": "rgba(48,38,31,.24)", "scroll-thumb-hi": "rgba(48,38,31,.38)",
+      "text-primary": "#30261f", "text-secondary": "#715f52", "text-tertiary": "#9b897c",
+      "toggle-active": "#984a31", "toggle-bg": "#e4d8ca", "warn": "#93600f", "warn-line": "rgba(147,96,15,.34)", "warn-soft": "rgba(147,96,15,.1)"
+    },
+    "dark": {
+      "accent": "#9a4930", "accent-glow": "rgba(210,108,72,.3)", "accent-soft": "rgba(210,108,72,.13)",
+      "alert": "#ff7468", "alert-line": "rgba(255,116,104,.44)", "alert-soft": "rgba(255,116,104,.15)",
+      "bar-bg": "rgba(24,18,15,.93)", "bar-border": "rgba(232,210,192,.11)", "bar-shadow": "0 1px 8px rgba(0,0,0,.34)",
+      "bg": "#17120f", "bound": "#62c99a", "bound-line": "rgba(98,201,154,.42)", "bound-soft": "rgba(98,201,154,.15)",
+      "cap-accent": "#9a4930", "cap-bg": "#2d211b", "cap-dim": "rgba(248,237,228,.5)", "cap-shadow": "0 4px 24px rgba(0,0,0,.4),0 0 0 1px rgba(210,108,72,.12)", "cap-text": "#f8ede4", "cap-wave": "rgba(225,137,103,.68)",
+      "card-bg": "rgba(39,29,24,.88)", "card-border": "rgba(232,210,192,.12)", "card-shadow": "0 8px 32px rgba(0,0,0,.36)",
+      "desk-bg": "linear-gradient(160deg,#100b09,#1b120e 42%,#261710 72%,#150d0a)", "divider": "rgba(232,210,192,.11)",
+      "panel-bg": "#281e19", "panel-border": "rgba(232,210,192,.13)", "panel-shadow": "0 12px 48px rgba(0,0,0,.42)", "panel-sub": "#b9a69a", "panel-text": "#f5eee8",
+      "scroll-thumb": "rgba(245,238,232,.23)", "scroll-thumb-hi": "rgba(245,238,232,.37)",
+      "text-primary": "#f5eee8", "text-secondary": "#b9a69a", "text-tertiary": "#806f65",
+      "toggle-active": "#9a4930", "toggle-bg": "#45342c", "warn": "#f0b45c", "warn-line": "rgba(240,180,92,.42)", "warn-soft": "rgba(240,180,92,.15)"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "manifestVersion": "1.1",
+  "packageType": "skin",
+  "appId": "com.reai.skin.claude-demo",
+  "version": "0.1.0",
+  "publisherId": "reai-labs",
+  "name": "Claude Studio Skin Demo",
+  "description": "Skin v1 顶栏与底部 Dock 结构演示；仅供仓库内开发测试。",
+  "targets": [
+    { "platform": "macos", "architectures": ["aarch64", "x86_64"] },
+    { "platform": "windows", "architectures": ["aarch64", "x86_64"] }
+  ],
+  "hostApi": { "range": ">=1.10.0 <2.0.0" },
+  "requires": { "hostCapabilities": [], "hardwareServices": [], "appIntents": [] },
+  "runtime": { "components": [] },
+  "skin": { "apiVersion": "1", "entry": "skin/skin.json" },
+  "permissions": [],
+  "network": { "policyVersion": 1, "endpoints": [] },
+  "billing": { "mode": "none" },
+  "data": { "privateStores": [], "imports": [], "exports": [] },
+  "contributes": {}
+}

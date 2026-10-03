@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5c5ce0"/>
+      <stop offset="1" stop-color="#7b7bf7"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <!-- 许愿星 -->
+  <path d="M128 52 L146 104 L200 104 L156 136 L172 188 L128 156 L84 188 L100 136 L56 104 L110 104 Z"
+        fill="none" stroke="#fff" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

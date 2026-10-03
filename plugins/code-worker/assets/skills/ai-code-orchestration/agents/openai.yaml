@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI 代码编排"
+  short_description: "按任务归属与执行配额使用编排面板，协作完成开发、独立测试和合并"
+  default_prompt: "使用 $ai-code-orchestration，检查接入能力并按我已授权的任务开始编排。"

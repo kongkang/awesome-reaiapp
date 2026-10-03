@@ -1,0 +1,198 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.example.todo",
+  "version": "1.1.1",
+  "publisherId": "example",
+  "name": "日程",
+  "description": "先收下每件事，再由日程助理在后台慢慢整理",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Productivity",
+    "tagline": "写一句话，先把事情收下来。",
+    "longDescription": "日程是一个由工作流驱动的 To-Do 前端原型：创建不等待分析，日程助理会异步整理时间、人物、地点与建议。V1 使用本地 Mock 演示完整交互，不连接云端服务。",
+    "capabilities": [
+      { "label": "默认先看", "detail": "今天最重要的事情" },
+      { "label": "日程助理", "detail": "Mock 异步整理与建议" },
+      { "label": "需要的权限", "detail": "无（V1 纯本地）" }
+    ],
+    "screenshots": [
+      { "gradient": "linear-gradient(135deg,#5956d6,#8b7cf6)", "caption": "今天、日历、未定日期与日程助理", "hasVideo": false }
+    ]
+  },
+  "targets": [
+    { "platform": "macos", "architectures": ["aarch64", "x86_64"] },
+    { "platform": "windows", "architectures": ["aarch64", "x86_64"] }
+  ],
+  "hostApi": { "range": ">=1.2.0 <2.0.0" },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "storage.kv@1",
+      "commands@1",
+      "apps.intent@1",
+      "titlebar.action@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": { "policyVersion": 1, "endpoints": [] },
+  "billing": { "mode": "none" },
+  "data": {
+    "privateStores": [
+      { "id": "tasks", "schemaVersion": 1 }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": { "rollbackFloor": "1.0.0" },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "日程"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "todo",
+        "label": "日程",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarActions": [
+      {
+        "id": "new-task",
+        "label": "新建日程",
+        "icon": "plus",
+        "text": "新建",
+        "showOnTitlebarHover": true,
+        "intent": { "type": "new-task" }
+      },
+      {
+        "id": "assistant",
+        "label": "打开日程助理",
+        "icon": "more-vertical",
+        "text": "助理",
+        "showOnTitlebarHover": true,
+        "intent": { "type": "open-assistant" }
+      }
+    ],
+    "commands": [
+      {
+        "id": "com.example.todo.new",
+        "componentId": "ui",
+        "title": "新建待办",
+        "inputSchema": { "type": "object", "additionalProperties": false },
+        "outputSchema": {
+          "type": "object",
+          "properties": { "status": { "const": "ok" } },
+          "required": ["status"],
+          "additionalProperties": false
+        },
+        "timeoutMs": 5000,
+        "supportsCancellation": true,
+        "concurrency": "serial",
+        "idempotency": "not-idempotent",
+        "callers": ["host", "user"]
+      },
+      {
+        "id": "com.example.todo.assistant.open",
+        "componentId": "ui",
+        "title": "打开日程助理",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "conversationKey": { "type": "string", "pattern": "^(app|task:.+)$" } },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": { "status": { "const": "ok" } },
+          "required": ["status"],
+          "additionalProperties": false
+        },
+        "timeoutMs": 5000,
+        "supportsCancellation": true,
+        "concurrency": "serial",
+        "idempotency": "not-idempotent",
+        "callers": ["host", "user"]
+      },
+      {
+        "id": "com.example.todo.assistant.talk",
+        "componentId": "ui",
+        "title": "与日程助理对话",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "conversationKey": { "type": "string", "pattern": "^(app|task:.+)$" } },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": { "status": { "const": "ok" } },
+          "required": ["status"],
+          "additionalProperties": false
+        },
+        "timeoutMs": 5000,
+        "supportsCancellation": true,
+        "concurrency": "serial",
+        "idempotency": "not-idempotent",
+        "callers": ["host", "user"]
+      }
+    ],
+    "intents": [
+      {
+        "id": "new-task",
+        "version": "1.0.0",
+        "componentId": "ui",
+        "opens": "surface:main",
+        "inputSchema": { "type": "object", "additionalProperties": false }
+      },
+      {
+        "id": "open-assistant",
+        "version": "1.0.0",
+        "componentId": "ui",
+        "opens": "surface:main",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "conversationKey": { "type": "string", "pattern": "^(app|task:.+)$" } },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "talk-to-assistant",
+        "version": "1.0.0",
+        "componentId": "ui",
+        "opens": "surface:main",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "conversationKey": { "type": "string", "pattern": "^(app|task:.+)$" } },
+          "additionalProperties": false
+        }
+      }
+    ]
+  }
+}
