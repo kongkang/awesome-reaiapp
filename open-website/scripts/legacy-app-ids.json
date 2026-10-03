@@ -1,0 +1,17 @@
+[
+  "com.reai.agents-im",
+  "com.reai.agents-tasks",
+  "com.reai.browser",
+  "com.reai.code-worker",
+  "com.reai.codex-app",
+  "com.reai.codex-link",
+  "com.reai.computer",
+  "com.reai.device-doctor",
+  "com.reai.dsh-agent",
+  "com.reai.pi-agent",
+  "com.reai.podcast",
+  "com.reai.terminal",
+  "com.reai.text-editor",
+  "com.reai.voice",
+  "com.reai.wishing-wall"
+]

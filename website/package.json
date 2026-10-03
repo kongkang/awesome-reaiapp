@@ -1,0 +1,19 @@
+{
+  "name": "reai-app-platform-docs",
+  "private": true,
+  "type": "module",
+  "description": "ReAI 插件平台开发者文档站，源 markdown 在 docs/",
+  "scripts": {
+    "check:changelog": "node scripts/check-changelog.mjs",
+    "sync": "bun run check:changelog && node scripts/sync-docs.mjs",
+    "dev": "bun run sync && vitepress dev",
+    "build": "bun run sync && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  },
+  "overrides": {
+    "vite": "6.4.3"
+  }
+}

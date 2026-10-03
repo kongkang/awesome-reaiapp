@@ -1,0 +1,213 @@
+/* ═══════════════════════════════════════════════════════════════
+   站点皮肤：沿用 platform/docs/*.html 那套设计语言
+
+   token 是从 app-development-guide-v1.html 的 :root / [data-theme=dark]
+   原样搬过来的，一个色值都没改。目的是让「网页版」和「文档站」看起来是
+   同一个产品的两种载体，而不是两份长得不像的文档。
+
+   只覆盖变量与少量排版，不动默认主题的结构——导航、搜索、大纲、移动端
+   适配继续由 VitePress 维护，升级时不会跟这份样式打架。
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* — 品牌色 — */
+  --vp-c-brand-1: #5c5ce0;
+  --vp-c-brand-2: #4444c7;
+  --vp-c-brand-3: #4444c7;
+  --vp-c-brand-soft: rgba(92, 92, 224, 0.1);
+
+  /* — 底色。侧栏比正文深一档，靠色阶分区，不靠分割线 — */
+  --vp-c-bg: #f6f6fb;
+  --vp-c-bg-alt: #f0f0f8;
+  --vp-c-bg-soft: #f0f0f8;
+  --vp-c-bg-elv: #ffffff;
+
+  /* — 文字 — */
+  --vp-c-text-1: #171726;
+  --vp-c-text-2: #68687a;
+  --vp-c-text-3: #9494a8;
+
+  --vp-c-divider: #ddddea;
+  --vp-c-border: #ddddea;
+  --vp-c-gutter: #ddddea;
+
+  /* — 字体。Inter 装了就用，没装落回系统字体，不引外部资源 — */
+  --vp-font-family-base: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --vp-font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
+
+  /* 亮色下代码块也是深底，这是网页版最显眼的一个特征 */
+  --vp-code-block-bg: #171724;
+  --vp-code-block-color: #e1e4e8;
+  --vp-code-line-highlight-color: rgba(133, 133, 255, 0.14);
+  --vp-code-copy-code-bg: #22222f;
+  --vp-code-copy-code-hover-bg: #2a2a39;
+  --vp-code-copy-code-active-text: #aaaabd;
+  --vp-code-tab-divider: #353548;
+  --vp-code-tab-text-color: #9494a8;
+  --vp-code-tab-hover-text-color: #f1f1f7;
+  --vp-code-tab-active-text-color: #f1f1f7;
+  --vp-code-tab-active-bar-color: #8585ff;
+
+  --vp-shadow-2: 0 18px 60px rgba(34, 34, 72, 0.1);
+  --vp-shadow-3: 0 18px 60px rgba(34, 34, 72, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #8585ff;
+  --vp-c-brand-2: #a4a4ff;
+  --vp-c-brand-3: #a4a4ff;
+  --vp-c-brand-soft: rgba(133, 133, 255, 0.14);
+
+  --vp-c-bg: #111119;
+  --vp-c-bg-alt: #191923;
+  --vp-c-bg-soft: #22222f;
+  --vp-c-bg-elv: #191923;
+
+  --vp-c-text-1: #f1f1f7;
+  --vp-c-text-2: #aaaabd;
+  --vp-c-text-3: #7c7c93;
+
+  --vp-c-divider: #353548;
+  --vp-c-border: #353548;
+  --vp-c-gutter: #353548;
+
+  --vp-code-block-bg: #0d0d14;
+
+  --vp-shadow-2: 0 22px 70px rgba(0, 0, 0, 0.34);
+  --vp-shadow-3: 0 22px 70px rgba(0, 0, 0, 0.44);
+}
+
+/* ── 标题：网页版的标题字距收得很紧，这是它显得利落的主要原因 ── */
+.vp-doc h1 {
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.14;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+}
+.vp-doc h2 {
+  margin-top: 52px;
+  padding-top: 26px;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  font-weight: 750;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.vp-doc h3 {
+  margin-top: 34px;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+.vp-doc h4 {
+  margin-top: 24px;
+  font-size: 15.5px;
+  letter-spacing: -0.01em;
+  color: var(--vp-c-text-1);
+}
+
+/* ── 正文：行距略松，中文长段落更好读 ── */
+.vp-doc p,
+.vp-doc li {
+  line-height: 1.78;
+}
+.vp-doc p {
+  margin: 14px 0;
+}
+
+/* ── 圆角与卡片感：网页版统一 22px，这里按元素大小分两档 ── */
+.vp-doc div[class*="language-"] {
+  border-radius: 16px;
+  box-shadow: var(--vp-shadow-2);
+}
+
+/* ⚠️ 亮色模式下代码块是深底（上面那条 --vp-code-block-bg），但 shiki 给每个 token
+   都埋了 --shiki-light / --shiki-dark 两套色，默认亮色取 light——那是为浅底配的
+   深色字，落在深底上几乎看不见。所以底色换了，字色必须一起切到 dark 那套。
+   language-text 这类没有 token 的块不带 shiki 变量，用 fallback 兜住。 */
+:root:not(.dark) .vp-doc [class*="language-"] code {
+  color: var(--vp-code-block-color);
+}
+:root:not(.dark) .vp-doc [class*="language-"] code span {
+  color: var(--shiki-dark, var(--vp-code-block-color));
+}
+.vp-doc table {
+  /* 长接口名不能撑宽手机整页；表格在自身区域内横向滚动。 */
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.vp-doc th,
+.vp-doc td {
+  border: 0;
+  border-bottom: 1px solid var(--vp-c-divider);
+  padding: 11px 14px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.vp-doc th {
+  background: var(--vp-c-bg-soft);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+.vp-doc tr:last-child td {
+  border-bottom: 0;
+}
+.vp-doc tr:nth-child(2n) {
+  background: transparent;
+}
+
+/* ── 引用块：网页版用左侧一道品牌色实线，比默认的灰线更有主张 ── */
+.vp-doc blockquote {
+  border-left: 3px solid var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  border-radius: 0 12px 12px 0;
+  padding: 12px 16px;
+  margin: 18px 0;
+}
+.vp-doc blockquote > p {
+  margin: 6px 0;
+  color: var(--vp-c-text-1);
+  font-size: 14.5px;
+}
+
+/* ── 行内代码：贴着品牌色，跟正文拉开但不抢戏 ── */
+.vp-doc :not(pre) > code {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-2);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.86em;
+  font-weight: 500;
+}
+.dark .vp-doc :not(pre) > code {
+  color: var(--vp-c-brand-1);
+}
+
+/* ── 侧栏与导航：分组标题用小号大写字母，对齐网页版的 kicker ── */
+.VPSidebarItem.level-0 > .item > .text {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--vp-c-brand-2);
+}
+.dark .VPSidebarItem.level-0 > .item > .text {
+  color: var(--vp-c-brand-1);
+}
+.VPNavBar .title {
+  letter-spacing: -0.02em;
+  font-weight: 800;
+}
+
+/* 首页/正文容器略微加宽：这批文档表格多，默认宽度容易挤 */
+.VPDoc:not(.has-aside) .content-container {
+  max-width: 920px;
+}
