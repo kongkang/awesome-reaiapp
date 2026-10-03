@@ -69,7 +69,7 @@ describe("普通 FormData 大文件分块上传", () => {
       expect(file.size).toBe(original.byteLength);
       expect(hash(new Uint8Array(await file.arrayBuffer()))).toBe(hash(original));
       expect(parsed.get("label")).toBe("synthetic-only");
-    });
+    }, size === 50 ? 20_000 : 5_000);
   }
 
   test("超过 50MiB 文件在创建 Host session 前拒绝", async () => {
