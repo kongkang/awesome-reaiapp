@@ -1,0 +1,286 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.codex-app",
+  "version": "0.1.9-h08.1",
+  "publisherId": "reai",
+  "name": "Codex App",
+  "description": "使用官方 Codex 完成工作，任务按本地文件夹组织",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Official",
+    "tagline": "把工作交给官方 Codex，并保留清楚的文件上下文",
+    "longDescription": "面向一般工作与代码任务的官方 Codex 客户端。按本地文件夹组织任务，支持 ChatGPT 订阅登录、审批、Skills、用量与文件变更；代码和文本编辑交给独立文本编辑器插件。",
+    "capabilities": [
+      {
+        "label": "登录",
+        "detail": "使用 ChatGPT 订阅；凭据只由本机官方 Codex runtime 管理"
+      },
+      {
+        "label": "工作文件夹",
+        "detail": "任务按用户选择的本地文件夹分组"
+      },
+      {
+        "label": "文件变更",
+        "detail": "通过文本编辑器插件查看或编辑，不内置 IDE"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#5b5ce2,#8b8cf5)",
+        "caption": "按工作文件夹组织 Codex 任务"
+      },
+      {
+        "gradient": "linear-gradient(135deg,#5052c9,#7477eb)",
+        "caption": "对话、审批与文件变更在同一任务中"
+      }
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.19.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "titlebar.action@1",
+      "apps.intent@1",
+      "system.folder-pick@1",
+      "system.tasks@1",
+      "storage.kv@1",
+      "agent.codex.tasks@1",
+      "metadata.i18n@2"
+    ],
+    "hardwareServices": [],
+    "appIntents": [
+      {
+        "appId": "com.reai.text-editor",
+        "intent": "open-document",
+        "version": "1.0.0",
+        "required": false,
+        "purpose": "把 Codex 文件变更交给独立文本编辑器查看或编辑",
+        "requiredFor": []
+      }
+    ]
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/main.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.2",
+  "requirements": [
+    {
+      "id": "runtime.codex",
+      "displayName": "ReAI Codex Runtime",
+      "kind": "managed_executable",
+      "componentId": "ui",
+      "required": true,
+      "requiredFor": [
+        "capability:agent.codex.tasks@1"
+      ],
+      "platforms": [
+        "macos"
+      ],
+      "channels": [
+        "direct"
+      ],
+      "version": {
+        "constraint": ">=0.149.1 <0.150.0"
+      },
+      "probe": {
+        "type": "host_registered",
+        "id": "codex-app-server-v1"
+      },
+      "provision": {
+        "mode": "host_managed_resource",
+        "resourceId": "com.reai.runtime.codex",
+        "installPolicy": "required_at_install",
+        "requiresConsent": true
+      },
+      "failure": {
+        "componentState": "blocked",
+        "featureState": "blocked",
+        "hostState": "satisfied"
+      },
+      "remediation": {
+        "action": "install_managed_resource",
+        "label": "下载并安装 Codex 运行组件",
+        "restartRequired": false
+      }
+    }
+  ],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "codex-preferences",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "0.1.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "Codex App"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "codex-app",
+        "label": "Codex App",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarActions": [
+      {
+        "id": "add-project",
+        "label": "添加工作文件夹",
+        "icon": "folder",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "add-project"
+        }
+      },
+      {
+        "id": "settings",
+        "label": "Codex App 设置",
+        "icon": "settings",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "open-settings"
+        }
+      }
+    ],
+    "intents": []
+  },
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadata.name"
+      },
+      {
+        "target": "description",
+        "key": "metadata.description"
+      },
+      {
+        "target": "surface.title",
+        "id": "main",
+        "key": "metadata.main"
+      },
+      {
+        "target": "sidebar.label",
+        "id": "codex-app",
+        "key": "metadata.sidebar"
+      },
+      {
+        "target": "titlebarAction.label",
+        "id": "add-project",
+        "key": "metadata.addProject"
+      },
+      {
+        "target": "titlebarAction.label",
+        "id": "settings",
+        "key": "metadata.settings"
+      },
+      {
+        "target": "storeListing.category",
+        "key": "metadataV2.category"
+      },
+      {
+        "target": "storeListing.tagline",
+        "key": "metadataV2.tagline"
+      },
+      {
+        "target": "storeListing.longDescription",
+        "key": "metadataV2.longDescription"
+      },
+      {
+        "target": "storeListing.capability.label",
+        "index": 0,
+        "key": "metadataV2.capability0Label"
+      },
+      {
+        "target": "storeListing.capability.detail",
+        "index": 0,
+        "key": "metadataV2.capability0Detail"
+      },
+      {
+        "target": "storeListing.capability.label",
+        "index": 1,
+        "key": "metadataV2.capability1Label"
+      },
+      {
+        "target": "storeListing.capability.detail",
+        "index": 1,
+        "key": "metadataV2.capability1Detail"
+      },
+      {
+        "target": "storeListing.capability.label",
+        "index": 2,
+        "key": "metadataV2.capability2Label"
+      },
+      {
+        "target": "storeListing.capability.detail",
+        "index": 2,
+        "key": "metadataV2.capability2Detail"
+      },
+      {
+        "target": "storeListing.screenshot.caption",
+        "index": 0,
+        "key": "metadataV2.caption0"
+      },
+      {
+        "target": "storeListing.screenshot.caption",
+        "index": 1,
+        "key": "metadataV2.caption1"
+      },
+      {
+        "target": "requirement.displayName",
+        "id": "runtime.codex",
+        "key": "metadataV2.requirement0"
+      }
+    ]
+  }
+}

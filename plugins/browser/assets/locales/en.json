@@ -1,0 +1,42 @@
+{
+  "home": {
+    "intro": "Agent web actions appear in a half-screen drawer; the engine allows https only.",
+    "openBrowser": "Open Browser",
+    "newTab": "New Tab",
+    "quickLinks": "Quick Links",
+    "currentTabs": "Open Tabs",
+    "refresh": "Refresh"
+  },
+  "tabs": {
+    "empty": "No tabs are open yet.",
+    "titleFallback": "Tab {tabId}",
+    "workBadge": "Working tab",
+    "close": "Close tab"
+  },
+  "status": {
+    "loadFailed": "Could not load browser state: {detail}"
+  },
+  "errors": {
+    "homeMountFailed": "Could not open the Browser home",
+    "bridgeMissing": "Browser bridge is not available (not in a plugin surface context)"
+  },
+  "metadata": {
+    "name": "Browser",
+    "description": "Built-in tabbed browser: the Agent can open, observe, and click web pages under control, fully visible to you in the half-screen drawer",
+    "main": "Browser",
+    "sidebar": "Browser",
+    "openCommand": "Open the Browser drawer"
+  },
+  "metadataV2": {
+    "category": "Utilities",
+    "tagline": "Keep every Agent web action in plain sight.",
+    "longDescription": "Built-in managed browser: tabs, address-bar navigation, back/forward/refresh. The Agent opens pages, observes elements, clicks, and types through the narrow browser-engine channel, and every action is shown to you in the half-screen drawer. Only https is allowed (http works for local development addresses); new windows and downloads are rejected by default, and web data stays isolated from the main app.",
+    "capability0Label": "Tabbed browsing",
+    "capability0Detail": "Address bar, back/forward/refresh, open in the system browser",
+    "capability1Label": "Agent controls",
+    "capability1Detail": "Open pages, observe elements, click, type, and press keys",
+    "capability2Label": "Permissions needed",
+    "capability2Detail": "Active after install and enable; no microphone or other system permissions",
+    "caption0": "The tabbed browser in the half-screen drawer with the Agent activity bar"
+  }
+}

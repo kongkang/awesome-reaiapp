@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "name": "AI Podcast",
+    "description": "把你关注的来源做成一档只给你听的播客（静态演示界面）",
+    "sidebar": {
+      "podcast": {
+        "label": "AI Podcast"
+      }
+    },
+    "surfaces": {
+      "main": {
+        "title": "AI Podcast"
+      }
+    },
+    "actions": {
+      "history": {
+        "label": "查看往期节目",
+        "text": "往期"
+      }
+    }
+  },
+  "metadataV2": {
+    "category": "媒体",
+    "tagline": "把你关注的来源做成一档只给你听的播客",
+    "longDescription": "每天早上把你订阅的来源汇总成一段音频，通勤路上听完就知道昨天发生了什么。当前版本是静态界面演示：数据内置、不联网；订阅汇总、真实音频与全局迷你播放器将在后续版本接入。",
+    "capability0Label": "侧栏会多一项",
+    "capability0Detail": "AI Podcast",
+    "capability1Label": "当前版本",
+    "capability1Detail": "静态界面演示：数据内置、不联网；全局迷你播放器尚未启用",
+    "capability2Label": "当前权限",
+    "capability2Detail": "不申请任何权限",
+    "caption0": "今日简报：12 分钟听完",
+    "caption1": "剧集抽屉：往回翻任意一天"
+  },
+  "tbc": {
+    "podcastPlayback": "播放控制只改变演示进度，不播放音频",
+    "podcastProgress": "进度条只改变内存计时器，不播放音频",
+    "podcastContent": "节目内容来自静态演示数据",
+    "podcastNotes": "本期提要来自静态演示数据",
+    "podcastHistory": "往期节目来自静态演示数据"
+  },
+  "view": {
+    "startupFailed": "AI Podcast 界面起不来",
+    "progressAria": "播放进度",
+    "play": "播放",
+    "pause": "暂停",
+    "prevEpisode": "上一集",
+    "nextEpisode": "下一集",
+    "back15": "后退 15 秒",
+    "forward15": "前进 15 秒",
+    "tbcAria": "TBC：{title}",
+    "notesKicker": "本期提要",
+    "notesTitle": "今天值得继续听的三条线索",
+    "notesCopy": "播放器、节目说明和后续内容都属于 main-body。它们可以持续向下延伸，但滚动只发生在这一区域，不会进入顶部 44px 的 Host 命中层。",
+    "noteProductHead": "产品",
+    "noteProductBody": "本周发布变化、用户反馈与下一步优先级。",
+    "noteTechHead": "技术",
+    "noteTechBody": "模型、工具链与开发者生态里值得关注的更新。",
+    "noteTeamHead": "团队",
+    "noteTeamBody": "会议结论、待确认事项与今天需要跟进的人。",
+    "drawerTitle": "往期节目",
+    "closeEpisodes": "关闭剧集列表",
+    "playerMeta": "{date}, 2026 · {sources} 个来源 · {minutes} 分钟",
+    "episodeMeta": "{date} · {minutes} 分钟 · {status}",
+    "episodePlaying": "播放中",
+    "episodeSources": "{sources} 个来源"
+  }
+}

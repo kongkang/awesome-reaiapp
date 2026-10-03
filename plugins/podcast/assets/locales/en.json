@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "name": "AI Podcast",
+    "description": "Turn the sources you follow into a podcast made just for you (static demo UI)",
+    "sidebar": {
+      "podcast": {
+        "label": "AI Podcast"
+      }
+    },
+    "surfaces": {
+      "main": {
+        "title": "AI Podcast"
+      }
+    },
+    "actions": {
+      "history": {
+        "label": "Browse past episodes",
+        "text": "Past"
+      }
+    }
+  },
+  "metadataV2": {
+    "category": "Media",
+    "tagline": "Turn the sources you follow into a podcast made just for you",
+    "longDescription": "Every morning it condenses the sources you subscribe to into one audio briefing you can finish on your commute. This version is a static UI demo: data is built in and nothing goes online; subscription digesting, real audio and the global mini player arrive in a later release.",
+    "capability0Label": "One more sidebar entry",
+    "capability0Detail": "AI Podcast",
+    "capability1Label": "Current version",
+    "capability1Detail": "Static UI demo: built-in data, no network; the global mini player is not enabled yet",
+    "capability2Label": "Current permissions",
+    "capability2Detail": "No permissions requested",
+    "caption0": "Today's briefing: 12 minutes to catch up",
+    "caption1": "Episodes drawer: flip back to any day"
+  },
+  "tbc": {
+    "podcastPlayback": "Playback controls only advance the demo progress; no audio is played",
+    "podcastProgress": "The progress bar only advances an in-memory timer; no audio is played",
+    "podcastContent": "Episode content comes from static demo data",
+    "podcastNotes": "Show notes come from static demo data",
+    "podcastHistory": "Past episodes come from static demo data"
+  },
+  "view": {
+    "startupFailed": "AI Podcast UI failed to start",
+    "progressAria": "Playback progress",
+    "play": "Play",
+    "pause": "Pause",
+    "prevEpisode": "Previous episode",
+    "nextEpisode": "Next episode",
+    "back15": "Back 15 seconds",
+    "forward15": "Forward 15 seconds",
+    "tbcAria": "TBC: {title}",
+    "notesKicker": "Show notes",
+    "notesTitle": "Three threads worth following up on today",
+    "notesCopy": "The player, show description and the content below all live inside main-body. They can extend downward, but scrolling stays in this region and never enters the 44px Host command layer at the top.",
+    "noteProductHead": "Product",
+    "noteProductBody": "This week's release changes, user feedback and the next priorities.",
+    "noteTechHead": "Tech",
+    "noteTechBody": "Updates worth noting across models, tooling and the developer ecosystem.",
+    "noteTeamHead": "Team",
+    "noteTeamBody": "Meeting decisions, items to confirm and the people to follow up with today.",
+    "drawerTitle": "Episodes",
+    "closeEpisodes": "Close episode list",
+    "playerMeta": "{date}, 2026 · {sources} sources · {minutes} min",
+    "episodeMeta": "{date} · {minutes} min · {status}",
+    "episodePlaying": "Playing",
+    "episodeSources": "{sources} sources"
+  }
+}

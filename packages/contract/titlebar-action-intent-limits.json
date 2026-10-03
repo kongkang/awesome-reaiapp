@@ -1,0 +1,10 @@
+{
+  "byteCases": [
+    { "serializedBytes": 4096, "valid": true },
+    { "serializedBytes": 4097, "valid": false }
+  ],
+  "depthCases": [
+    { "depth": 8, "valid": true },
+    { "depth": 9, "valid": false }
+  ]
+}

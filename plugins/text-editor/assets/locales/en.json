@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "name": "Text Editor",
+    "description": "Local Markdown, code, and file diff viewer",
+    "surfaceTitle": "Text Editor",
+    "sidebarLabel": "Text Editor",
+    "pickWorkspaceLabel": "Open local workspace folder",
+    "pickWorkspaceText": "Open folder"
+  }
+}

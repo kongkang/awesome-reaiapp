@@ -1,0 +1,240 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.dsh-agent",
+  "version": "1.2.8-dev.1",
+  "publisherId": "4d8a4ddb-2293-4b11-9ef4-3f24f117998c",
+  "name": "DSH",
+  "description": "查看 Host 受管 DSH 基础服务的真实运行状态、会话、处理过程与脱敏工具记录",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Official",
+    "tagline": "让底层 DSH 的工作过程保持透明",
+    "longDescription": "DSH 是 ReAI Board Host 管理的基础服务，缺失或损坏时由 App 生命周期修复中心下载、验签并自检，不依赖本插件。安装这个官方透明度界面后，你可以查看所有来源 App 的脱敏 DSH 会话、工作目录、处理时间线、工具调用和能力指纹，并设置之后新会话使用的默认模型档位；卸载只移除界面，不会改变或删除底层 DSH 数据。",
+    "capabilities": [
+      {
+        "label": "用途",
+        "detail": "透明度界面"
+      },
+      {
+        "label": "读取范围",
+        "detail": "所有来源 App 的脱敏 DSH 记录"
+      },
+      {
+        "label": "可修改",
+        "detail": "之后新会话的默认模型档位"
+      },
+      {
+        "label": "不会改变",
+        "detail": "已有会话、runtime 与来源 App 能力"
+      }
+    ],
+    "screenshots": []
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.18.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "titlebar.action@1",
+      "agent.dsh-observe@1",
+      "metadata.i18n@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "id": "agent.dsh-observe@1",
+      "purpose": "读取并展示所有来源 App 的脱敏 DSH 会话、工作目录、工具和诊断记录，并设置之后新会话使用的默认模型档位",
+      "required": true
+    }
+  ],
+  "requirementsVersion": "1.2",
+  "requirements": [
+    {
+      "id": "runtime.dsh",
+      "displayName": "ReAI DSH Runtime",
+      "kind": "managed_executable",
+      "componentId": "ui",
+      "required": false,
+      "requiredFor": [
+        "capability:agent.dsh-observe@1"
+      ],
+      "platforms": [
+        "macos"
+      ],
+      "channels": [
+        "direct"
+      ],
+      "version": {
+        "constraint": ">=0.1.1-rc.2 <0.1.2"
+      },
+      "probe": {
+        "type": "host_registered",
+        "id": "dsh-runner-v1"
+      },
+      "provision": {
+        "mode": "host_managed_resource",
+        "resourceId": "com.reai.runtime.dsh",
+        "installPolicy": "optional_on_demand",
+        "requiresConsent": true
+      },
+      "failure": {
+        "componentState": "degraded",
+        "featureState": "blocked",
+        "hostState": "satisfied"
+      },
+      "remediation": {
+        "action": "install_managed_resource",
+        "label": "下载并安装 DSH 运行组件",
+        "restartRequired": false
+      }
+    }
+  ],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "1.0.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "DSH"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "dsh",
+        "label": "DSH",
+        "icon": "assets/icon.svg",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarActions": [
+      {
+        "id": "settings",
+        "label": "DSH 设置",
+        "icon": "settings",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "open-settings"
+        }
+      },
+      {
+        "id": "refresh",
+        "label": "刷新 DSH 记录",
+        "icon": "rotate-cw",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "refresh"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "id": "com.reai.dsh-agent.back-to-root",
+        "componentId": "ui",
+        "title": "返回 DSH 主页",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "timeoutMs": 3000,
+        "supportsCancellation": false,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host"
+        ]
+      }
+    ],
+    "scheduledTasks": []
+  },
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadata.name"
+      },
+      {
+        "target": "description",
+        "key": "metadata.description"
+      },
+      {
+        "target": "surface.title",
+        "id": "main",
+        "key": "metadata.surfaces.item0"
+      },
+      {
+        "target": "sidebar.label",
+        "id": "dsh",
+        "key": "metadata.sidebar.item0"
+      },
+      {
+        "target": "command.title",
+        "id": "com.reai.dsh-agent.back-to-root",
+        "key": "metadata.commands.item0"
+      },
+      {
+        "target": "titlebarAction.label",
+        "id": "settings",
+        "key": "metadata.actionLabels.item0"
+      },
+      {
+        "target": "titlebarAction.label",
+        "id": "refresh",
+        "key": "metadata.actionLabels.item1"
+      }
+    ]
+  },
+  "oauthAppId": "7CDGFSiaEAHLi9fTIYdWnuFW6IvCqxio"
+}

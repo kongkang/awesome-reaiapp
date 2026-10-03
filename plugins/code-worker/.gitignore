@@ -1,0 +1,6 @@
+node_modules/
+dist/
+build-manifest.json
+*.reaiapp
+*.reaiapp.submission.json
+.artifacts/

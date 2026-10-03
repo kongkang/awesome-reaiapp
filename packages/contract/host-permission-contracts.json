@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "permissions": {
+    "account.status@1": {
+      "bridgeMethods": [
+        "account.status"
+      ],
+      "inputFields": [],
+      "outputFields": [
+        "enabled",
+        "loggedIn"
+      ],
+      "dataCategories": [
+        "account_state"
+      ],
+      "sideEffects": []
+    },
+    "os.notification.post@1": {
+      "bridgeMethods": [
+        "notifications.post"
+      ],
+      "inputFields": [
+        "title",
+        "body"
+      ],
+      "outputFields": [
+        "queued"
+      ],
+      "dataCategories": [
+        "notification_content"
+      ],
+      "sideEffects": [
+        "enqueue_system_notification"
+      ]
+    },
+    "http.fetch@1": {
+      "bridgeMethods": [
+        "http.fetch",
+        "http.upload.start",
+        "http.upload.chunk",
+        "http.upload.finish"
+      ],
+      "inputFields": [
+        "url",
+        "method",
+        "headers",
+        "body",
+        "endpointId"
+      ],
+      "outputFields": [
+        "status",
+        "headers",
+        "body"
+      ],
+      "dataCategories": [
+        "manifest_declared_network_data"
+      ],
+      "sideEffects": [
+        "host_brokered_network_request"
+      ]
+    },
+    "local.terminal.exec@1": {
+      "bridgeMethods": [],
+      "inputFields": [
+        "program",
+        "args",
+        "cwdRelative",
+        "timeoutMs"
+      ],
+      "outputFields": [
+        "program",
+        "exitCode",
+        "stdout",
+        "stderr",
+        "truncated"
+      ],
+      "dataCategories": [
+        "authorized_workspace_files",
+        "bounded_program_output"
+      ],
+      "sideEffects": [
+        "sandboxed_allowlist_process",
+        "mounted_mirror_file_writes"
+      ],
+      "programs": [
+        "awk",
+        "wc",
+        "sort",
+        "diff"
+      ],
+      "platforms": [
+        "macos"
+      ],
+      "requiredWorkspace": "mounted",
+      "requiredMode": "yolo",
+      "maxTimeoutMs": 30000,
+      "maxBytesPerOutputStream": 65536
+    }
+  }
+}

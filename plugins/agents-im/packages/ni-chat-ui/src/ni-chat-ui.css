@@ -1,0 +1,1146 @@
+.plugin-main-frame {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding-top: var(--reai-plugin-titlebar-safe-top, 44px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main-body { flex: 1; min-height: 0; }
+
+.ni-chat-app {
+  /* 指回宿主 token、写死值仅作兜底：以前这行是裸 #5f55e6，靠 agents-im.css 里
+     同名同特异性的覆盖救回主题联动——赢在样式表加载顺序，顺序一变就静默失效。 */
+  --ni-accent: var(--accent, #5f55e6);
+  --ni-accent-soft: color-mix(in srgb, var(--ni-accent) 10%, transparent);
+  --ni-panel: color-mix(in srgb, var(--card-bg, #fff) 86%, transparent);
+  --ni-divider: var(--divider, rgba(28, 28, 46, 0.1));
+  position: relative; /* 覆盖式浮层（.ni-overlay）的定位上下文 */
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+  color: var(--text-primary, #1c1c2e);
+  background:
+    radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--ni-accent) 6%, transparent), transparent 38%),
+    var(--bg, #f6f6f8);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+.ni-chat-app * { box-sizing: border-box; }
+.ni-chat-app button, .ni-chat-app input, .ni-chat-app textarea { font: inherit; }
+.ni-chat-app button { appearance: none; border: 0; }
+
+.ni-sidebar {
+  /* --ni-sidebar-w 由拖宽手柄（A4-5）写入：有用户意愿用它，没有则回 282px
+     （本包既有对稿默认宽；稿 .al 的 AL_DEF=264）。 */
+  width: var(--ni-sidebar-w, 282px);
+  flex: 0 0 var(--ni-sidebar-w, 282px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--ni-divider);
+  background: color-mix(in srgb, var(--bg, #f6f6f8) 82%, var(--ni-accent) 3%);
+  /* position:relative 是拖拽手柄的定位锚点——缺了手柄会跑到 .ni-chat-app 上错位
+     （稿 .al 同一条注释） */
+  position: relative;
+}
+
+/* ===== 中栏拖宽手柄（A4-5，对照稿 .rs-handle 逐值：alResize）=====
+   隐形热区：平时看不见任何东西，鼠标进 8px 边缘才把那条竖线淡进来。
+   静态界面不该为一个「可能会用」的功能常驻一条线——发现性交给光标形状。
+   z-index 60 与稿一致：本表浮层从 66 起步（稿「新增浮层起步必须大于 60」）。 */
+.ni-sidebar > .rs-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -3px;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 60;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ni-sidebar > .rs-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 2px;
+  background: var(--ni-accent);
+  opacity: 0;
+  transition: opacity .15s;
+}
+.ni-sidebar > .rs-handle:hover::after,
+.ni-sidebar > .rs-handle.dragging::after { opacity: .85; }
+/* 拖动中锁死整页光标与选区（对稿 body.rs-dragging）：拖出栏外光标不能变成文本选择 */
+body.rs-dragging { cursor: col-resize; user-select: none; -webkit-user-select: none; }
+
+.ni-sidebar-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+.ni-brand { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.ni-brand-mark {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: linear-gradient(145deg, #756cf1, #4f45cf);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--ni-accent) 22%, transparent);
+}
+.ni-transport-badge {
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--ni-accent) 20%, transparent);
+  border-radius: 999px;
+  color: var(--ni-accent);
+  background: var(--ni-accent-soft);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.ni-search-row { display: flex; gap: 8px; padding: 2px 12px 11px; }
+.ni-conversation-search {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 10px;
+  outline: none;
+  color: inherit;
+  background: var(--ni-panel);
+  font-size: 12px;
+}
+.ni-conversation-search:focus { border-color: var(--ni-accent); box-shadow: 0 0 0 3px var(--ni-accent-soft); }
+.ni-add-contact {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid var(--ni-divider) !important;
+  border-radius: 10px;
+  color: var(--text-secondary, #636374);
+  background: var(--ni-panel);
+  cursor: pointer;
+}
+.ni-add-contact:hover { color: var(--ni-accent); border-color: color-mix(in srgb, var(--ni-accent) 30%, transparent) !important; }
+
+.ni-conversation-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 16px; }
+.ni-conversation-item {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  padding: 10px;
+  border: 1px solid transparent !important;
+  border-radius: 12px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.ni-conversation-item:hover { background: color-mix(in srgb, var(--text-primary, #1c1c2e) 5%, transparent); }
+.ni-conversation-item.is-active {
+  border-color: color-mix(in srgb, var(--ni-accent) 24%, transparent) !important;
+  background: var(--ni-panel);
+  box-shadow: 0 8px 22px rgba(29, 27, 54, 0.05);
+}
+
+.ni-avatar {
+  width: 39px;
+  height: 39px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 39px;
+  overflow: hidden;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(145deg, #7770b2, #575078);
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: 0.2px;
+}
+.ni-avatar.is-group { grid-template-columns: 1fr 1fr; gap: 1px; padding: 3px; background: var(--ni-divider); }
+.ni-avatar.is-group i {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--text-primary, #1c1c2e);
+  background: var(--card-bg, #fff);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.ni-conversation-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.ni-conversation-title-row, .ni-conversation-preview-row { min-width: 0; display: flex; align-items: center; gap: 5px; }
+.ni-conversation-title-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
+.ni-conversation-title-row time { margin-left: auto; color: var(--text-tertiary, #9292a0); font-size: 9px; }
+.ni-conversation-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-tertiary, #9292a0); font-size: 11px; }
+.ni-needs-action, .ni-muted { margin-left: auto; flex: 0 0 auto; font-size: 9px; }
+.ni-needs-action { color: #d5574e; font-weight: 700; }
+.ni-muted { color: var(--text-tertiary, #9292a0); }
+.ni-unread {
+  min-width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 9px;
+  color: #fff;
+  background: #e64b43;
+  font-size: 9px;
+  font-weight: 700;
+}
+.ni-list-empty { padding: 32px 12px; color: var(--text-tertiary, #9292a0); font-size: 12px; text-align: center; }
+
+/* ===== 中栏状态分组段头（B6-3，对照稿 .al-grp 1777-1780 / .al-pin-rule 1751）=====
+   「需要你确认 · N」的红取稿值 #ff3b30（.al-grp-k.alert，PR 审查裁定：冲突
+   一律以设计稿为准；行内「等你回答」徽章的 #d5574e 是本包历史适配，不在本条
+   目范围）。组头横 padding 8px + 列表自身 8px = 稿的 16px 总距。 */
+.ni-conversation-group { display: flex; align-items: center; gap: 8px; padding: 14px 8px 6px; }
+.ni-conversation-group-key {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-tertiary, #9292a0);
+  white-space: nowrap;
+}
+.ni-conversation-group-key.alert { color: #ff3b30; }
+.ni-conversation-group-rule { flex: 1; height: 1px; background: var(--ni-divider); }
+/* 置顶项与分组之间的那条线（稿：入口跟干活的人隔一条线；margin 2px + 列表 8px = 稿 10px 总距） */
+.ni-pin-rule { height: 1px; background: var(--ni-divider); margin: 7px 2px 3px; }
+
+.ni-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.ni-profile-badge.is-agent { color: #5047cd; background: rgba(95, 85, 230, 0.12); }
+.ni-profile-badge.is-system { color: #9a5b12; background: rgba(232, 152, 50, 0.15); }
+.ni-profile-badge.is-user { color: #197052; background: rgba(38, 177, 125, 0.13); }
+
+.ni-conversation-pane { position: relative; /* 成员卡（.ni-member-card）的定位上下文 */ flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.ni-conversation-header {
+  position: relative; /* 「更多」菜单（.ni-more-menu）的定位上下文 */
+  height: 60px;
+  flex: 0 0 60px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--ni-divider);
+  background: color-mix(in srgb, var(--bg, #f6f6f8) 88%, transparent);
+  backdrop-filter: blur(18px);
+}
+.ni-conversation-header .ni-avatar { width: 34px; height: 34px; flex-basis: 34px; border-radius: 10px; font-size: 12px; }
+.ni-conversation-heading { flex: 1; min-width: 0; }
+.ni-conversation-heading-row { display: flex; align-items: center; gap: 7px; }
+.ni-conversation-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.ni-conversation-subtitle { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-tertiary, #9292a0); font-size: 10.5px; }
+.ni-transient-status { color: var(--ni-accent); font-weight: 650; }
+.ni-header-action {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--ni-divider) !important;
+  border-radius: 9px;
+  color: var(--text-secondary, #636374);
+  background: var(--ni-panel);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.ni-mock-notice {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border-bottom: 1px solid color-mix(in srgb, #d19d36 18%, transparent);
+  color: #8c6316;
+  background: color-mix(in srgb, #f1c46b 12%, transparent);
+  font-size: 9.5px;
+  text-align: center;
+}
+
+.ni-message-list { flex: 1; min-height: 0; overflow-y: auto; padding: 24px clamp(18px, 4vw, 56px) 30px; }
+.ni-message { max-width: 780px; display: flex; align-items: flex-start; gap: 9px; margin: 0 auto 18px; }
+.ni-message.is-own { justify-content: flex-end; }
+.ni-message > .ni-avatar { width: 30px; height: 30px; flex-basis: 30px; border-radius: 9px; font-size: 10px; }
+.ni-message-body { max-width: min(82%, 640px); min-width: 0; }
+.ni-message.is-own .ni-message-body { display: flex; flex-direction: column; align-items: flex-end; }
+.ni-message-sender { display: flex; align-items: center; gap: 6px; margin: 0 0 4px 2px; }
+.ni-message-sender strong { font-size: 10.5px; font-weight: 650; }
+.ni-message-reply {
+  margin: 0 0 5px;
+  padding: 6px 9px;
+  border-left: 2px solid var(--ni-accent);
+  border-radius: 5px;
+  color: var(--text-secondary, #636374);
+  background: color-mix(in srgb, var(--ni-accent) 6%, transparent);
+  font-size: 10px;
+}
+.ni-message-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 6px 15px 15px 15px;
+  background: var(--ni-panel);
+  box-shadow: 0 6px 18px rgba(29, 27, 54, 0.04);
+}
+.ni-message.is-own .ni-message-bubble { color: #fff; border-color: transparent; border-radius: 15px 6px 15px 15px; background: var(--ni-accent); }
+.ni-message.is-system .ni-message-bubble { border-color: rgba(221, 155, 54, 0.25); background: rgba(238, 186, 91, 0.09); }
+.ni-message-meta { display: flex; gap: 7px; margin-top: 4px; color: var(--text-tertiary, #9292a0); font-size: 8.5px; }
+.ni-message.is-own .ni-message-meta { justify-content: flex-end; }
+.ni-message-revision { color: var(--ni-accent); }
+.ni-message-reply-action {
+  margin-top: 3px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--text-tertiary, #9292a0);
+  background: transparent;
+  font-size: 9px;
+  opacity: 0;
+  cursor: pointer;
+}
+.ni-message:hover .ni-message-reply-action, .ni-message-reply-action:focus-visible { opacity: 1; }
+.ni-message.is-own .ni-message-reply-action { align-self: flex-end; }
+
+.ni-part-text { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; }
+.ni-mention { color: var(--ni-accent); font-weight: 700; }
+.ni-message.is-own .ni-mention { color: #fff; text-decoration: underline; }
+.ni-part-thinking details { min-width: 220px; color: var(--text-secondary, #636374); font-size: 10.5px; }
+.ni-part-thinking summary { cursor: pointer; color: var(--ni-accent); font-weight: 650; }
+.ni-part-thinking p { margin: 7px 0 0; line-height: 1.5; }
+.ni-part-tool-call, .ni-part-tool-result, .ni-part-file, .ni-part-image, .ni-part-audio, .ni-part-video, .ni-part-webpage {
+  min-width: min(360px, 100%);
+  padding: 9px 10px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg, #f6f6f8) 72%, transparent);
+  font-size: 10.5px;
+}
+.ni-part-tool-call, .ni-part-tool-result { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
+.ni-part-tool-call span, .ni-part-tool-result strong { color: var(--ni-accent); }
+.ni-part-tool-call p, .ni-part-tool-result p, .ni-part-webpage p { grid-column: 1 / -1; margin: 2px 0 0; color: var(--text-secondary, #636374); line-height: 1.4; }
+.ni-part-tool-result.is-failed { border-color: rgba(222, 74, 62, 0.3); }
+.ni-part-file, .ni-part-image, .ni-part-audio, .ni-part-video { display: flex; align-items: center; gap: 9px; }
+.ni-part-file > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.ni-part-file small, .ni-part-webpage small { color: var(--text-tertiary, #9292a0); }
+.ni-file-icon, .ni-media-thumb, .ni-media-symbol {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  border-radius: 8px;
+  color: var(--ni-accent);
+  background: var(--ni-accent-soft);
+  font-size: 8px;
+  font-weight: 800;
+}
+.ni-media-thumb { background: linear-gradient(145deg, #ded8ff, #b8cdfd); }
+.ni-part-webpage { display: flex; flex-direction: column; gap: 3px; }
+/* 「带上的上下文」小条（对照稿附件与文件卡片的浅底同语言）：引用在前、
+   正文在后，与消息流里 reply 的层次同构。 */
+.ni-part-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px dashed color-mix(in srgb, var(--ni-accent) 36%, transparent);
+  border-radius: 9px;
+  background: var(--ni-accent-soft);
+  color: var(--text-secondary, #636374);
+  font-size: 10.5px;
+}
+.ni-message.is-own .ni-part-context { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.9); }
+.ni-context-symbol { color: var(--ni-accent); }
+.ni-message.is-own .ni-context-symbol { color: #fff; }
+.ni-part-unknown { padding: 8px 10px; border: 1px dashed var(--ni-divider); border-radius: 9px; color: var(--text-tertiary, #9292a0); font-size: 10px; }
+
+.ni-interaction {
+  min-width: min(380px, 100%);
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--ni-accent) 26%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--ni-accent) 7%, var(--card-bg, #fff));
+}
+.ni-interaction-eyebrow { margin-bottom: 5px; color: var(--ni-accent); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+.ni-interaction-prompt { display: block; font-size: 11.5px; }
+.ni-interaction-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ni-interaction-option {
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--ni-accent) 25%, transparent) !important;
+  border-radius: 8px;
+  color: var(--ni-accent);
+  background: var(--card-bg, #fff);
+  font-size: 10px;
+  cursor: pointer;
+}
+.ni-interaction-option:hover { color: #fff; background: var(--ni-accent); }
+.ni-interaction-option:disabled { opacity: 0.5; cursor: wait; }
+.ni-interaction-answer { margin: 8px 0 0; color: var(--text-secondary, #636374); font-size: 10.5px; }
+.ni-interaction-open-form { width: 100%; display: flex; align-items: flex-end; gap: 6px; }
+.ni-interaction-text {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+  border: 1px solid var(--ni-divider);
+  border-radius: 8px;
+  outline: none;
+  padding: 7px 8px;
+  color: inherit;
+  background: var(--card-bg, #fff);
+  font-size: 10.5px;
+}
+.ni-interaction-text:focus { border-color: var(--ni-accent); }
+.ni-interaction-submit {
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--ni-accent);
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ni-interaction-submit:disabled { opacity: 0.55; }
+
+.ni-composer { flex: 0 0 auto; padding: 10px clamp(16px, 3vw, 38px) 14px; border-top: 1px solid var(--ni-divider); background: color-mix(in srgb, var(--bg, #f6f6f8) 90%, transparent); }
+
+/* ===== 输入区三层（A4-10/12/13，对照稿 ac-foot）=====
+   附件条 / 输入行住在这条主轴上；「回到最新」与「+」清单两个浮层贴着
+   它的顶边（bottom:calc(100% + 8px)）——带了附件、来了引用，输入区长高，
+   浮层跟着上移。跨元素对齐由这一个定位容器驱动，各浮层不写各的数字。 */
+.ni-composer-main { position: relative; max-width: 780px; margin: 0 auto; }
+
+/* 「回到最新」胶囊（对照稿 .ac-jump）：居中、贴输入区顶边。绝对定位不占
+   布局，不会挤压消息流；.show 切换显隐（scroll 滞回驱动）。 */
+.ni-jump {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 66;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  color: var(--text-secondary, #636374);
+  background: var(--ni-panel);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--ni-divider);
+  box-shadow: 0 10px 24px rgba(29, 27, 54, 0.12);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.ni-jump.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.ni-jump svg { display: block; }
+
+/* ===== 待确认坞（A4-11，对照稿 .ac-ask 系列）=====
+   未决的确认钉在输入框正上方，不随消息流滚走；往上翻看上下文时收缩成一条
+   摘要（.is-mini），回到底部或点收缩条展开——收缩/展开走 80/220 滞回
+   （view 侧 syncAskDock），间距大于展开/收缩的高度跳变，边界不自激。
+   告警色指回宿主 --alert token，兜底用本包既有告警红。 */
+.ni-ask-dock {
+  flex-shrink: 0;
+  margin: 0 0 10px;
+  border: 1px solid var(--alert, #d5574e);
+  border-radius: 13px;
+  background: var(--ni-panel);
+  box-shadow: 0 -3px 16px color-mix(in srgb, var(--alert, #d5574e) 14%, transparent);
+  overflow: hidden;
+}
+.ni-ask-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 13px;
+  background: color-mix(in srgb, var(--alert, #d5574e) 7%, transparent);
+  color: var(--alert, #d5574e);
+  cursor: pointer;
+}
+.ni-ask-bar svg { flex-shrink: 0; }
+.ni-ask-bar-t {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.ni-ask-body { max-height: 260px; opacity: 1; visibility: visible; transition: max-height 0.22s ease, opacity 0.16s ease, visibility 0s linear 0s; }
+/* 收起时 visibility 等淡出结束再 hidden：隐形按钮不再能被 Tab 聚焦或
+   进无障碍树（Esc 收起后焦点不该停在看不见的选项上）。 */
+.ni-ask-dock.is-mini .ni-ask-body { max-height: 0; opacity: 0; visibility: hidden; transition: max-height 0.22s ease, opacity 0.16s ease, visibility 0s linear 0.16s; }
+/* mini 态悬停临时展开（对照稿 .ac-ask.mini:hover——人把指针凑过来看一眼
+   摘要想看全文，不用先点一下）。 */
+.ni-ask-dock.is-mini:hover .ni-ask-body {
+  max-height: 260px;
+  opacity: 1;
+  visibility: visible;
+  /* hover 规则必须自带无延迟的 transition 清单：变更后的样式才是过渡参数的
+     取值来源，不写就会沿用 is-mini 规则里的 visibility 0s linear 0.16s——
+     前一个 160ms 内容保持 hidden，快速扫过的「看一眼」什么都看不到。 */
+  transition: max-height 0.22s ease, opacity 0.16s ease, visibility 0s linear 0s;
+}
+.ni-ask-q { margin: 0; padding: 12px 14px 10px; font-size: 13px; line-height: 1.62; color: var(--text-primary, #1c1c2e); }
+
+/* 未决确认被钉进坞时，流内那个位置留的不可见锚（对照稿：未决的确认不在
+   流里渲染——答完了才落回流里成为记录）。 */
+.ni-part-ask-docked { display: none; }
+
+/* 「这句话要带上的东西」附件条（对照稿 .ac-att）：贴着输入框，因为它是
+   内容的一部分。顶部必须留白：附件卡与消息流里的文件卡片都是浅紫底，
+   贴在一起分不出「已发出去的」和「正要发的」——靠留白分隔，不画线。 */
+.ni-composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 0 8px;
+}
+.ni-composer-attachment {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px 5px 10px;
+  border-radius: 9px;
+  background: var(--ni-accent-soft);
+  font-size: 11.5px;
+  color: var(--text-secondary, #636374);
+}
+.ni-composer-attachment b { font-weight: 500; color: var(--text-primary, #1c1c2e); }
+/* 权限 chip（对照稿 .ac-att-i.scope）：它是一片可调的范围、点得动（换范围），
+   不是一份东西——描边 + 「换」字与普通附件区分，形状与文字双通道。 */
+.ni-composer-attachment.is-scope { background: transparent; border: 1px dashed var(--ni-accent); cursor: pointer; }
+.ni-composer-attachment.is-scope:hover { background: var(--ni-accent-soft); }
+/* 跨 App 带进来的固定内容（A3-24「发给 agent」）：与 scope 型同族的引用 chip，
+   但点不动（内容固定，没有「换」）——保留虚线描边说「这是引用，不是文件」。 */
+.ni-composer-attachment.is-external { background: transparent; border: 1px dashed var(--ni-accent); }
+.ni-composer-attachment-ic { color: var(--ni-accent); }
+.ni-composer-attachment-swap {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ni-accent);
+  border: 1px solid var(--ni-accent);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 14px;
+}
+.ni-composer-attachment-x {
+  display: flex;
+  align-items: center;
+  color: var(--text-tertiary, #9292a0);
+  background: transparent;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ni-composer-attachment-x:hover { color: #d5574e; }
+
+/* 「+」能力清单（对照稿 .ac-plus）：向上展开、贴输入区顶边、左缘对齐
+   输入行。开时由 .open 呈现（按需渲染，节点只在开着时在场）。
+   背景要实心（稿 1712 的硬要求）：宿主注入的 --card-bg 是 rgba(.8) 的毛玻璃
+   卡色，压在消息流上会把对话透上来跟选项混读——底下垫一层不透明 --bg，
+   上面叠原卡色，合成后不透明（同 shell-adapt.css 浮层先例）。 */
+.ni-plus-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 67;
+  width: 270px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--ni-divider);
+  background: linear-gradient(var(--card-bg, #fff), var(--card-bg, #fff)) var(--bg, #fff);
+  box-shadow: 0 14px 34px rgba(29, 27, 54, 0.12);
+}
+.ni-plus-group {
+  padding: 7px 9px 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--text-tertiary, #9292a0);
+}
+.ni-plus-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 9px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.ni-plus-item:hover { background: var(--ni-accent-soft); }
+.ni-plus-item-ic {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 25px;
+  border-radius: 7px;
+  background: var(--ni-accent-soft);
+  font-size: 13px;
+}
+.ni-plus-item-tx { flex: 1; min-width: 0; }
+.ni-plus-item-nm { display: block; font-size: 12.5px; font-weight: 500; color: var(--text-primary, #1c1c2e); }
+.ni-plus-item-ds {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-tertiary, #9292a0);
+  font-size: 10.5px;
+}
+.ni-plus-foot { padding: 6px 10px 3px; font-size: 10px; color: var(--text-tertiary, #9292a0); }
+/* 「+」按下去要看得出清单是它开的（对照稿 .ac-in-btn.on）——
+   一颗键和一个界面元素对应，反馈也得对上。 */
+.ni-composer-attach { cursor: pointer; }
+.ni-composer-attach:hover { color: var(--ni-accent); background: var(--ni-accent-soft); }
+.ni-composer-attach.is-open { color: #fff; background: var(--ni-accent); }
+
+.ni-composer-form {
+  max-width: 780px;
+  min-height: 43px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0 auto;
+  padding: 5px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 14px;
+  background: var(--ni-panel);
+  box-shadow: 0 8px 24px rgba(29, 27, 54, 0.06);
+}
+.ni-composer-form:focus-within { border-color: var(--ni-accent); box-shadow: 0 0 0 3px var(--ni-accent-soft), 0 8px 24px rgba(29, 27, 54, 0.06); }
+.ni-composer-input { flex: 1; min-width: 0; max-height: 96px; resize: none; border: 0; outline: 0; padding: 7px 4px; color: inherit; background: transparent; font-size: 12px; line-height: 1.4; }
+.ni-composer-attach, .ni-composer-mic, .ni-composer-send { height: 31px; flex: 0 0 auto; border-radius: 9px; }
+.ni-composer-attach { width: 31px; color: var(--text-tertiary, #9292a0); background: transparent; }
+/* 输入行麦克风钮（A4-16，对照稿 .ac-in-btn.mic）：accent 实底白图标——
+   语音是这块键盘的主路径，视觉重量不给到就等于降级成「先点一下麦克风」。 */
+.ni-composer-mic {
+  width: 31px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--ni-accent);
+  cursor: pointer;
+}
+.ni-composer-send { padding: 0 12px; color: #fff; background: var(--ni-accent); font-size: 10.5px; font-weight: 700; cursor: pointer; }
+.ni-composer-send:disabled { opacity: 0.55; }
+.ni-composer-reply, .ni-composer-mentions {
+  max-width: 780px;
+  margin: 0 auto 6px;
+}
+.ni-composer-reply {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border-left: 2px solid var(--ni-accent);
+  border-radius: 6px;
+  color: var(--text-secondary, #636374);
+  background: var(--ni-accent-soft);
+  font-size: 9.5px;
+}
+.ni-composer-reply span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ni-composer-reply-cancel { color: var(--text-secondary, #636374); background: transparent; cursor: pointer; }
+.ni-composer-mentions { display: flex; flex-wrap: wrap; gap: 5px; }
+.ni-composer-mention-chip {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--ni-accent);
+  background: var(--ni-accent-soft);
+  font-size: 9px;
+  cursor: pointer;
+}
+/* ===== 打 @ 弹的成员选择（A4-14，对照稿 .at-pick / .at-it）=====
+   贴输入区顶边（与「+」清单同一纪律），不锚死固定高度：输入区会长高
+   （带了附件、来了待确认），锚死会被挤进内容底下、盖住刚加进来的附件。
+   竖排候选列表：头像 / 名字 / 右侧稳定标识；选中行左侧 accent 竖条。 */
+.ni-mention-picker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 72;
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 14px 34px rgba(29, 27, 54, 0.12);
+}
+.ni-mention-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 9px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.ni-mention-picker-item:hover { background: var(--ni-accent-soft); }
+.ni-mention-picker-item.is-sel { background: var(--ni-accent-soft); box-shadow: inset 2px 0 0 var(--ni-accent); }
+.ni-at-av {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--text-primary, #1c1c2e) 8%, transparent);
+  font-size: 12px;
+}
+.ni-at-nm { font-size: 12.5px; color: var(--text-primary, #1c1c2e); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ni-at-rl { margin-left: auto; font-size: 10.5px; color: var(--text-tertiary, #9292a0); white-space: nowrap; flex-shrink: 0; }
+.ni-mention-picker-empty { display: block; padding: 9px 10px; color: var(--text-tertiary, #9292a0); font-size: 11.5px; }
+.ni-system-readonly, .ni-client-note { margin: 0; color: var(--text-tertiary, #9292a0); font-size: 10px; text-align: center; }
+.ni-client-note { margin-top: 6px; color: #bb453d; }
+/* ===== 未选对话空白页（A4-6，对照稿 .ac-empty 三层结构）=====
+   初始与「关闭对话」后的落点：图标 / 主文案 / 键位教学。数值逐条对照稿
+   （gap 9px、13px/11.5px、教学里的键位加粗提级到 secondary）。 */
+.ni-conversation-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; }
+.ni-conversation-empty-icon { color: var(--text-tertiary, #9292a0); opacity: 0.45; }
+.ni-conversation-empty-title { font-size: 13px; color: var(--text-secondary, #636374); }
+.ni-conversation-empty-hint { font-size: 11.5px; color: var(--text-tertiary, #9292a0); }
+.ni-conversation-empty-hint b { font-weight: 600; color: var(--text-secondary, #636374); }
+.ni-sr-live { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ===== 「+」菜单（对照稿 .al-menu）与新建落点浮层（对照稿 .pka）===== */
+.ni-search-row { position: relative; }
+.ni-add-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 12px;
+  z-index: 72;
+  min-width: 168px;
+  overflow: hidden;
+  border: 1px solid var(--ni-divider);
+  border-radius: 11px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 14px 34px rgba(29, 27, 54, 0.12);
+  opacity: 0;
+  transform: translateY(-5px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.ni-add-menu.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.ni-add-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 13px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ni-add-menu-item:hover { background: var(--ni-accent-soft); }
+.ni-add-menu-item.is-demo { font-size: 11.5px; color: var(--text-tertiary, #9292a0); }
+.ni-add-menu-item:disabled { cursor: default; }
+.ni-add-menu-item:disabled:hover { background: transparent; }
+.ni-add-menu-sep { height: 1px; background: var(--ni-divider); margin: 3px 0; }
+
+.ni-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 34px 26px 26px;
+  background: rgba(10, 10, 26, 0.52);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.ni-overlay[hidden] { display: none; }
+.ni-overlay-card {
+  width: 100%;
+  max-width: 400px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  overflow: hidden;
+  padding: 14px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 16px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 24px 60px rgba(29, 27, 54, 0.18);
+}
+.ni-overlay-title { padding: 2px 4px; color: var(--text-primary, #1c1c2e); font-size: 13px; font-weight: 600; }
+.ni-overlay-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+.ni-overlay-list > * { flex-shrink: 0; }
+.ni-overlay-empty { margin: 0; padding: 24px 8px; color: var(--text-tertiary, #9292a0); font-size: 11.5px; text-align: center; }
+.ni-overlay-note { margin: 0; color: var(--text-tertiary, #9292a0); font-size: 10.5px; text-align: center; }
+.ni-overlay-note[hidden] { display: none; }
+.ni-overlay-foot { padding: 4px 0 2px; color: var(--text-tertiary, #9292a0); font-size: 10.5px; text-align: center; }
+
+.ni-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.ni-pick-item:hover { background: var(--ni-accent-soft); }
+.ni-pick-item.is-off { opacity: 0.5; cursor: default; }
+.ni-pick-item.is-off:hover { background: transparent; }
+.ni-pick-avatar {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  color: var(--text-primary, #1c1c2e);
+  background: var(--ni-divider);
+  font-size: 15px;
+}
+.ni-pick-copy { flex: 1; min-width: 0; }
+.ni-pick-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary, #1c1c2e); font-size: 12.5px; font-weight: 500; }
+.ni-pick-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; color: var(--text-tertiary, #9292a0); font-size: 11px; }
+.ni-pick-check {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 16px;
+  border: 1.5px solid var(--ni-divider);
+  border-radius: 5px;
+  color: transparent;
+  font-size: 10px;
+}
+.ni-pick-item.is-on .ni-pick-check { color: #fff; background: var(--ni-accent); border-color: var(--ni-accent); }
+.ni-pick-tag { flex: 0 0 auto; color: var(--text-tertiary, #9292a0); font-size: 10px; }
+.ni-pick-go {
+  margin-top: 2px;
+  padding: 9px;
+  border-radius: 11px;
+  color: var(--ni-accent);
+  background: var(--ni-accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ni-pick-go:hover { filter: brightness(0.96); }
+
+.ni-new-group-name {
+  flex-shrink: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 10px;
+  outline: none;
+  color: inherit;
+  background: var(--ni-accent-soft);
+  font-size: 12.5px;
+}
+.ni-new-group-name:focus { border-color: var(--ni-accent); }
+.ni-new-group-name.shake { animation: ni-shake 0.34s ease; }
+
+.ni-scan-bar { flex-shrink: 0; height: 3px; margin: 2px 4px; border-radius: 2px; overflow: hidden; background: var(--ni-divider); }
+.ni-scan-bar i { display: block; width: 38%; height: 100%; border-radius: 2px; background: var(--ni-accent); animation: ni-indet 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.ni-scan-bar.done { display: none; }
+
+@keyframes ni-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+@keyframes ni-indet {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+/* ===== 会话头「更多」菜单（A4-8，对照稿 .ac-more）=====
+   条目样式与 .ni-add-menu-item 同一份（同一种东西不该有两份样式），
+   class 独立以便两个菜单各自演化、测试选择器互不误抓。 */
+.ni-more-menu {
+  position: absolute;
+  top: calc(100% - 2px);
+  right: 18px;
+  z-index: 72;
+  width: 172px;
+  overflow: hidden;
+  border: 1px solid var(--ni-divider);
+  border-radius: 11px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 14px 34px rgba(29, 27, 54, 0.12);
+  opacity: 0;
+  transform: translateY(-5px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.ni-more-menu.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.ni-more-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 13px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ni-more-menu-item:hover { background: var(--ni-accent-soft); }
+
+/* ===== 点 @ 弹的成员卡（A4-9，对照稿 .mem-card）：小浮层，不是抽屉 ===== */
+.ni-member-card {
+  position: absolute;
+  z-index: 70;
+  width: 198px;
+  padding: 12px 13px;
+  border: 1px solid var(--ni-divider);
+  border-radius: 13px;
+  background: var(--ni-panel);
+  box-shadow: 0 14px 34px rgba(29, 27, 54, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(5px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ni-member-card.show { opacity: 1; pointer-events: auto; transform: none; }
+.ni-member-card-h { display: flex; align-items: center; gap: 10px; }
+.ni-member-card-av {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--ni-accent);
+  background: var(--ni-accent-soft);
+  font-size: 15px;
+  font-weight: 750;
+}
+.ni-member-card-who { min-width: 0; }
+.ni-member-card-nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary, #1c1c2e);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ni-member-card-rl { display: flex; align-items: center; gap: 4px; margin-top: 1px; color: var(--text-tertiary, #9292a0); font-size: 10.5px; }
+.ni-member-card-st { margin-top: 10px; color: var(--text-secondary, #636374); font-size: 11px; }
+.ni-member-card-go {
+  margin-top: 10px;
+  width: 100%;
+  padding: 7px;
+  border-radius: 8px;
+  color: var(--ni-accent);
+  background: var(--ni-accent-soft);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ni-member-card-go:hover { color: #fff; background: var(--ni-accent); }
+
+/* 对得上人的 @ 才可点（对照稿：对不上的只高亮）。 */
+.ni-mention.is-resolved { cursor: pointer; }
+
+/* ===== 右侧推挤式抽屉（A4-15，对照稿 .ac-drawer：任务锚点 / 群成员两档）=====
+   推挤不覆盖：宽度 0↔236px 参与 .ni-chat-app 的 flex 主轴，会话区让位而非
+   蒙版盖上来——稿的原判断：跟 todo 详情的挤压式 Drawer 同款，长期开着也不
+   该挡内容。数值逐条对照稿（236px、.26s cubic-bezier(.4,0,.2,1)、accent-soft
+   底、开时左缘 divider 线）。 */
+.ni-drawer {
+  width: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-left: 1px solid transparent;
+  background: var(--ni-accent-soft);
+  transition: width 0.26s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.26s;
+}
+.ni-drawer.open { width: 236px; border-left-color: var(--ni-divider); }
+.ni-drawer-inner { width: 236px; height: 100%; display: flex; flex-direction: column; position: relative; }
+/* 抽屉已在 main-body 内，标题与关闭按钮不再重复避让 Host。 */
+.ni-drawer-h {
+  flex-shrink: 0;
+  padding: 0 48px 8px 16px;
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+}
+.ni-drawer-acts {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 3px 0 0;
+  flex-shrink: 0;
+}
+.ni-drawer-t { font-size: 13px; font-weight: 600; color: var(--text-primary, #1c1c2e); }
+.ni-drawer-x {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--text-tertiary, #9292a0);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ni-drawer-x:hover { color: var(--text-primary, #1c1c2e); }
+.ni-drawer-b { flex: 1; position: relative; overflow-y: auto; padding: 0 12px 16px; display: flex; flex-direction: column; gap: 5px; }
+.ni-drawer-b > * { flex-shrink: 0; }
+/* 锚点档的诚实空态（对照稿空列表的 .ac-dr-item-m 文案位：10.5px tertiary） */
+.ni-drawer-empty { margin: 0; padding: 10px 12px; color: var(--text-tertiary, #9292a0); font-size: 10.5px; }
+/* 成员行（对照稿 .ac-dr-mem：30px 头像 + 名 + role 副行） */
+.ni-drawer-mem { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; }
+.ni-drawer-mem-av {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  position: relative;
+  border-radius: 9px;
+  color: #fff;
+  background: linear-gradient(145deg, #7770b2, #575078);
+  font-size: 14px;
+  font-weight: 750;
+}
+/* presence 状态点（对照稿 .al-st 的位置与 11px 规格）：配色按真实 presence
+   语义映射——online 绿（稿 st-idle 的 #28c840）/ offline 灰（稿 st-off 的
+   tertiary）；capability/TTL 之外不画，不编 wait/busy。 */
+.ni-drawer-st {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--ni-accent-soft);
+}
+.ni-drawer-st.is-online { background: #28c840; }
+.ni-drawer-st.is-offline { background: var(--text-tertiary, #9292a0); }
+.ni-drawer-mem-i { flex: 1; min-width: 0; }
+.ni-drawer-mem-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary, #1c1c2e); font-size: 12.5px; }
+.ni-drawer-mem-r { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; color: var(--text-tertiary, #9292a0); font-size: 10.5px; }
+/* 「拉 agent 进群」（对照稿 .ac-dr-add）：dashed 边框的第二入口，
+   与会话头「更多」共用 invite 浮层。 */
+.ni-drawer-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 9px;
+  border: 1.5px dashed var(--ni-divider) !important;
+  border-radius: 10px;
+  color: var(--text-tertiary, #9292a0);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ni-drawer-add:hover { border-color: var(--ni-accent) !important; color: var(--ni-accent); }
+/* 入口钮开态（对照稿 .ac-act.on；与 .ni-composer-attach.is-open 同语言：
+   开着的那档要看得出是它开的）。 */
+.ni-header-action.is-open { color: #fff; background: var(--ni-accent); border-color: transparent !important; }
+
+@media (max-width: 760px) {
+  /* 拖宽手柄从宽度被窄档钉死（238px）的这档起撤掉——手柄显示就必须拖得动，
+     「看得见却按了没反应」是最差形态（稿小屏短路同一条判断，断点对齐本包
+     窄档 760 而非稿的 520）。 */
+  .ni-sidebar > .rs-handle { display: none; }
+  .ni-sidebar { width: 238px; flex-basis: 238px; }
+  .ni-sidebar-header { padding-inline: 12px; }
+  .ni-transport-badge { display: none; }
+  .ni-message-list { padding-inline: 14px; }
+  .ni-message-body { max-width: 88%; }
+  .ni-part-tool-call, .ni-part-tool-result, .ni-part-file, .ni-part-image, .ni-part-audio, .ni-part-video, .ni-part-webpage, .ni-interaction { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .ni-chat-app { position: relative; }
+  .ni-sidebar { width: 92px; flex-basis: 92px; }
+  .ni-brand strong, .ni-search-row, .ni-conversation-copy, .ni-unread, .ni-transport-badge { display: none; }
+  .ni-sidebar-header { justify-content: center; }
+  .ni-conversation-item { justify-content: center; padding-inline: 6px; }
+  /* 收起态的分组段头对稿 1646-1648：键隐藏，只留居中的短线，跟收起态的
+     列表项（只剩头像）排在一起不挤。 */
+  .ni-conversation-group { justify-content: center; padding: 12px 0 4px; }
+  .ni-conversation-group-key { display: none; }
+  .ni-conversation-group-rule { flex: 0 0 20px; opacity: 0.6; }
+  .ni-conversation-header { padding-inline: 12px; }
+  .ni-header-action { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ni-chat-app *, .ni-chat-app *::before, .ni-chat-app *::after { scroll-behavior: auto !important; transition: none !important; }
+}
+
+/* 键盘可达性基线（设计规范 §3.1 的 :focus-visible 条，不许删）：
+   鼠标点击不出现，Tab 聚焦时给可见轮廓。mention 与附件 chip 以
+   span/div role=button 参与键盘（内嵌真按钮的 ×，不能 button 套 button）。 */
+.ni-chat-app button:focus-visible,
+.ni-chat-app input:focus-visible,
+.ni-chat-app textarea:focus-visible,
+.ni-chat-app [role="button"]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ni-accent) 28%, transparent);
+  outline-offset: 2px;
+}

@@ -1,0 +1,7 @@
+{
+  "purpose": "toolchain-regression-fixture-only; not a release lock, approval or signature",
+  "sourceCommit": "b139bf5b82b9007233adc9f05eea88f89014fb5f",
+  "appId": "com.reai.voice",
+  "version": "2.14.3",
+  "packageSha256": "f285ee539333b3a9d954c8849b10900fb09f39d6b269af6cc8de7b86ec16d232"
+}

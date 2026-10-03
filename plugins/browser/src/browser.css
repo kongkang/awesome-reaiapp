@@ -1,0 +1,129 @@
+/* 浏览器插件主页。颜色一律用宿主注入的 :root token（跟随主题切换），
+   不写死色值——写死了亮暗主题下必炸一边。 */
+
+html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+.plugin-main-frame {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding-top: var(--reai-plugin-titlebar-safe-top, 44px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+.rb-home {
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 12px 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text-primary);
+  background: var(--bg);
+}
+
+.rb-sub { margin: 0; font-size: 12px; color: var(--text-tertiary); line-height: 1.6; }
+
+.rb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rb-btn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--divider);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.rb-btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+.rb-btn:hover { opacity: 0.9; }
+
+.rb-sec-t {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rb-refresh {
+  font-family: inherit;
+  font-size: 11px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.rb-refresh:hover { background: var(--divider); color: var(--text-primary); }
+
+.rb-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.rb-link {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--divider);
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.rb-link:hover { border-color: var(--accent); color: var(--text-primary); }
+
+.rb-tabs { display: flex; flex-direction: column; gap: 6px; }
+.rb-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--divider);
+  background: var(--bg);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.rb-tab:hover { border-color: var(--accent); }
+.rb-tab-close {
+  flex-shrink: 0;
+  border-radius: 6px;
+  /* 悬停铺底色：上下原来只有 1px，贴着字（按钮留白规则 §3.5）。上下改 3px，
+     再用等量负 margin 抵消，标签行高不变。 */
+  padding: 3px 5px;
+  margin: -2px 0;
+  font-size: 11px;
+  opacity: 0.5;
+}
+.rb-tab-close:hover { opacity: 1; background: var(--divider); }
+.rb-tab.active { border-color: var(--accent); color: var(--text-primary); }
+.rb-tab-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rb-tab-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.rb-tab-badge.work { background: var(--divider); color: var(--text-tertiary); }
+
+.rb-status { font-size: 12px; color: var(--text-tertiary); line-height: 1.6; }
+.rb-status.error { color: #d33; }

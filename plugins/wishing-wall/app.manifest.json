@@ -1,0 +1,201 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.wishing-wall",
+  "version": "0.4.2",
+  "publisherId": "reai",
+  "oauthAppId": "T5VPups2tUk2JbWiAw2BdPGgILVUFYPd",
+  "name": "AI许愿墙",
+  "description": "把你的点子告诉想造东西的人——写下愿望，提交到墙站，扫码继续在手机端",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "社区",
+    "tagline": "疯狂点子王——把你的点子告诉想造东西的人",
+    "longDescription": "在桌面端写下你的愿望并提交到 AI许愿墙；浏览随机愿望与正在成真的项目；给喜欢的愿望点共鸣。登录经平台身份链路（插件自有 OAuth App，断言握手）建立 Host 管理的 cookie 会话（managed_cookie），插件不持有任何 token、不读取 ReAI 账号信息；愿望正文与落款会上传到墙站并在服务端留存。",
+    "capabilities": [
+      {
+        "label": "侧栏会多一项",
+        "detail": "AI许愿墙"
+      },
+      {
+        "label": "桌面端写愿望",
+        "detail": "提交到墙站（上传愿望正文与落款）"
+      },
+      {
+        "label": "点共鸣",
+        "detail": "给喜欢的愿望加一份支持"
+      },
+      {
+        "label": "浏览愿望",
+        "detail": "随机愿望与正在成真的项目"
+      },
+      {
+        "label": "扫码到网页端",
+        "detail": "QR 编码墙站主页 URL（无凭证）"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#5c5ce0,#7b7bf7)",
+        "caption": "左边写愿望，右边浏览墙 + 项目 + 扫码"
+      }
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    },
+    {
+      "platform": "windows",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.1.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "storage.kv@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "id": "http.fetch@1",
+      "purpose": "拉取许愿墙随机愿望与项目（GET /api/home）；用插件自己的外脑 OAuth App（Host 托管代签，Bearer 只注入外脑域，插件不持有 token）换取 aud=墙站的短时受众断言（POST 外脑断言端点），经断言握手登录墙站建立 cookie 会话（POST /api/auth/plugin）；提交愿望（POST /api/wishes）、点共鸣（POST /api/wishes/:id/supports）。会话 cookie 由 Host 统一管理，插件不读取 ReAI 账号信息。",
+      "required": true
+    }
+  ],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": [
+      {
+        "id": "wishing-wall-api",
+        "componentId": "ui",
+        "origins": [
+          "https://wish.vibeallthings.com"
+        ],
+        "pathPrefixes": [
+          "/api/home",
+          "/api/wishes",
+          "/api/auth/plugin"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "owner": "reai",
+        "purpose": [
+          "storage",
+          "authentication"
+        ],
+        "dataCategories": [
+          "user_prompt"
+        ],
+        "retention": {
+          "mode": "session"
+        },
+        "required": true,
+        "providerMode": "host_brokered",
+        "auth": {
+          "mode": "managed_cookie"
+        }
+      },
+      {
+        "id": "wainao-oauth",
+        "componentId": "ui",
+        "origins": [
+          "https://block2-api.wainao.chat"
+        ],
+        "pathPrefixes": [
+          "/oauth/assertion"
+        ],
+        "methods": [
+          "POST"
+        ],
+        "owner": "reai",
+        "purpose": [
+          "authentication"
+        ],
+        "dataCategories": [
+          "account_identifier"
+        ],
+        "retention": {
+          "mode": "session"
+        },
+        "required": true,
+        "providerMode": "host_brokered",
+        "auth": {
+          "mode": "oauth_app"
+        }
+      }
+    ]
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "wishes",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "0.4.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "AI许愿墙"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "wishing-wall",
+        "label": "AI许愿墙",
+        "icon": "assets/icon.png",
+        "opens": "surface:main"
+      }
+    ],
+    "intents": [],
+    "eventSubscriptions": [],
+    "acceptsActionContext": [],
+    "commands": []
+  }
+}

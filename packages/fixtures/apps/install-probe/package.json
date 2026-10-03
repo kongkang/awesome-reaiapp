@@ -1,0 +1,13 @@
+{
+  "name": "reai-fixture-install-probe",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "reaiApp": {
+    "entry": "src/app.ts"
+  },
+  "devDependencies": {
+    "@reai/app-sdk": "1.22.0",
+    "@reai/app-test": "1.2.0"
+  }
+}

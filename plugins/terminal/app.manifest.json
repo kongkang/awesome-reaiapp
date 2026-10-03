@@ -1,0 +1,244 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.terminal",
+  "version": "1.0.4-k03.1",
+  "publisherId": "reai",
+  "oauthAppId": "TPbwDuJFlSIPdMlA2xiB4wRMHaMk3262",
+  "name": "终端",
+  "description": "由应用本身托管执行能力的交互式终端插件",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Dev",
+    "tagline": "在受控插件界面中使用本机 Shell。",
+    "longDescription": "终端界面以插件形式安装；Shell 与 PTY 始终由应用本身托管。插件不能指定可执行程序、注入环境或绕过授权。",
+    "capabilities": [
+      {
+        "label": "多会话标签",
+        "detail": "新建、切换、重启和关闭交互式终端"
+      },
+      {
+        "label": "需要的权限",
+        "detail": "启动本机 Shell，并执行你在终端里输入的命令"
+      },
+      {
+        "label": "安全边界",
+        "detail": "执行能力留在应用本身；插件只使用版本化 terminal.session 接口"
+      }
+    ],
+    "screenshots": [
+      {
+        "gradient": "linear-gradient(135deg,#111827,#374151)",
+        "caption": "多标签交互式终端",
+        "hasVideo": false
+      }
+    ]
+  },
+  "targets": [
+    {
+      "platform": "macos",
+      "architectures": [
+        "aarch64",
+        "x86_64"
+      ]
+    }
+  ],
+  "hostApi": {
+    "range": ">=1.16.0 <2.0.0"
+  },
+  "requires": {
+    "hostCapabilities": [
+      "surface.main@1",
+      "sidebar.item@1",
+      "storage.kv@1",
+      "titlebar.action@1",
+      "terminal.session@1",
+      "metadata.i18n@1"
+    ],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": {
+          "activate": "default.activate",
+          "deactivate": "default.deactivate"
+        }
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "id": "terminal.session@1",
+      "purpose": "在本机启动交互式 Shell，执行你输入的命令；该 Shell 可以访问当前账户本来有权访问的文件与网络",
+      "required": true
+    }
+  ],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": {
+    "policyVersion": 1,
+    "endpoints": []
+  },
+  "billing": {
+    "mode": "none"
+  },
+  "data": {
+    "privateStores": [
+      {
+        "id": "terminal-preferences",
+        "schemaVersion": 1
+      }
+    ],
+    "imports": [],
+    "exports": []
+  },
+  "dataCompatibility": {
+    "rollbackFloor": "1.0.0"
+  },
+  "contributes": {
+    "surfaces": [
+      {
+        "id": "main",
+        "componentId": "ui",
+        "location": "app.main",
+        "title": "终端"
+      }
+    ],
+    "sidebarItems": [
+      {
+        "id": "terminal",
+        "label": "终端",
+        "opens": "surface:main"
+      }
+    ],
+    "titlebarStatus": {
+      "label": "已连接",
+      "tone": "success"
+    },
+    "titlebarActions": [
+      {
+        "id": "restart",
+        "label": "重启当前终端",
+        "icon": "rotate-cw",
+        "text": "重启",
+        "variant": "outlined",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "restart-active"
+        }
+      },
+      {
+        "id": "stop",
+        "label": "结束当前终端",
+        "icon": "square",
+        "text": "结束",
+        "variant": "danger",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "stop-active"
+        }
+      },
+      {
+        "id": "settings",
+        "label": "终端设置",
+        "icon": "settings",
+        "showOnTitlebarHover": false,
+        "intent": {
+          "type": "open-settings"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "id": "com.reai.terminal.back-to-root",
+        "componentId": "ui",
+        "title": "返回终端",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "timeoutMs": 3000,
+        "supportsCancellation": false,
+        "concurrency": "serial",
+        "idempotency": "idempotent",
+        "callers": [
+          "host"
+        ]
+      }
+    ],
+    "intents": []
+  },
+  "i18n": {
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "messages": [
+      {
+        "target": "name",
+        "key": "metadataName"
+      },
+      {
+        "target": "description",
+        "key": "metadataDescription"
+      },
+      {
+        "target": "surface.title",
+        "key": "metadataSurface",
+        "id": "main"
+      },
+      {
+        "target": "sidebar.label",
+        "key": "metadataSidebar",
+        "id": "terminal"
+      },
+      {
+        "target": "titlebarStatus.label",
+        "key": "metadataStatus"
+      },
+      {
+        "target": "titlebarAction.label",
+        "key": "metadataRestartLabel",
+        "id": "restart"
+      },
+      {
+        "target": "titlebarAction.text",
+        "key": "metadataRestartText",
+        "id": "restart"
+      },
+      {
+        "target": "titlebarAction.label",
+        "key": "metadataStopLabel",
+        "id": "stop"
+      },
+      {
+        "target": "titlebarAction.text",
+        "key": "metadataStopText",
+        "id": "stop"
+      },
+      {
+        "target": "titlebarAction.label",
+        "key": "metadataSettings",
+        "id": "settings"
+      },
+      {
+        "target": "command.title",
+        "key": "metadataBack",
+        "id": "com.reai.terminal.back-to-root"
+      }
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "manifestVersion": "1.1",
+  "appId": "com.reai.agents-im",
+  "version": "1.0.0",
+  "publisherId": "reai",
+  "name": "Agents · IM",
+  "description": "人和 Agent 都是一等账号的 ni-chat IM 客户端（协议预览）",
+  "icon": "assets/icon.png",
+  "storeListing": {
+    "category": "Official",
+    "tagline": "人、Agent 和 System 使用同一套 IM 协议",
+    "longDescription": "ni.chat 是供人类使用的 ni-chat IM 客户端。人和 Agent 都是标准账号，可以私聊、群聊、回复、提及、发送附件并处理会话内 Interaction；身份类型只影响标记，不改变消息和权限模型。当前版本使用协议预览数据，真实连接将在 Host Broker 和 ni-chat 合同落地后启用。",
+    "capabilities": [
+      { "label": "侧栏会多一项", "detail": "Agents · IM" },
+      { "label": "账号模型", "detail": "人、Agent 与 System 共享 Profile、会话和消息" },
+      { "label": "当前权限", "detail": "协议预览不联网，也不读取本机进程或文件" }
+    ],
+    "screenshots": [
+      { "gradient": "linear-gradient(135deg,#5c5ce0,#7b7bf7)", "caption": "同一套 IM：人与 Agent 自然互通", "hasVideo": true },
+      { "gradient": "linear-gradient(135deg,#4646b4,#6464d8)", "caption": "公开状态、流式消息与结构化内容" },
+      { "gradient": "linear-gradient(135deg,#6b5cd0,#9080e8)", "caption": "会话内 Interaction：需要你回答时清晰呈现" }
+    ]
+  },
+  "targets": [
+    { "platform": "macos", "architectures": ["aarch64", "x86_64"] },
+    { "platform": "windows", "architectures": ["aarch64", "x86_64"] }
+  ],
+  "hostApi": { "range": ">=1.1.0 <2.0.0" },
+  "requires": {
+    "hostCapabilities": ["surface.main@1", "sidebar.item@1"],
+    "hardwareServices": [],
+    "appIntents": []
+  },
+  "runtime": {
+    "components": [
+      {
+        "id": "ui",
+        "kind": "web-surface",
+        "protocol": "web-surface@1",
+        "required": true,
+        "headless": false,
+        "activation": "on-demand",
+        "entry": "dist/app.js",
+        "dependsOn": [],
+        "lifecycle": { "activate": "default.activate", "deactivate": "default.deactivate" }
+      }
+    ]
+  },
+  "permissions": [],
+  "requirementsVersion": "1.1",
+  "requirements": [],
+  "network": { "policyVersion": 1, "endpoints": [] },
+  "billing": { "mode": "none" },
+  "data": { "privateStores": [], "imports": [], "exports": [] },
+  "dataCompatibility": { "rollbackFloor": "1.0.0" },
+  "contributes": {
+    "surfaces": [
+      { "id": "main", "componentId": "ui", "location": "app.main", "title": "Agents · IM" }
+    ],
+    "sidebarItems": [
+      { "id": "agents-im", "label": "Agents · IM", "icon": "assets/icon.png", "opens": "surface:main" }
+    ],
+    "intents": [
+      {
+        "id": "attach-context",
+        "version": "1.0.0",
+        "componentId": "ui",
+        "opens": "surface:main",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "呈现名，如「现场记录 14:03 · 84 字」" },
+            "text": { "type": "string", "description": "引用正文（Voice 侧该段的转写文本）" },
+            "fromMs": { "type": "number", "description": "段起始墙钟毫秒" },
+            "durationMs": { "type": "number", "description": "段时长毫秒" }
+          },
+          "required": ["label", "text"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "open-conversation",
+        "version": "1.0.0",
+        "componentId": "ui",
+        "opens": "surface:main",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "agentName": { "type": "string", "description": "目标 agent 的呈现名（任务详情坞「在 IM 里看上下文」）" },
+            "agentId": { "type": "string", "description": "目标 agent 的 profile id（有则优先精确匹配）" }
+          },
+          "required": ["agentName"],
+          "additionalProperties": false
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "codes": [
+    "HOST_RUNTIME_KIND_NOT_SUPPORTED"
+  ],
+  "note": "首版只支持恰好一个组件"
+}

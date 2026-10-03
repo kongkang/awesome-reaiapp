@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "name": "Codex Workspace Demo",
+    "description": "左侧工作轨、顶部命令栏与紧凑控制台式页面编排"
+  },
+  "shell": {
+    "variant": "left-rail",
+    "brand": { "wordmark": "CODEX", "kicker": "CODEX WORKSPACE" },
+    "primaryOrder": ["home", "device", "extstore", "installed", "terminal", "settings", "account"],
+    "searchPlaceholder": "搜索任务或插件"
+  },
+  "layout": {
+    "railWidth": 76,
+    "topbarHeight": 112,
+    "dockHeight": 72,
+    "radius": 8,
+    "density": "compact",
+    "pagePreset": "console"
+  },
+  "tokens": {
+    "light": {
+      "accent": "#0f6b52", "accent-glow": "rgba(15,107,82,.22)", "accent-soft": "rgba(15,107,82,.09)",
+      "alert": "#c0362c", "alert-line": "rgba(192,54,44,.34)", "alert-soft": "rgba(192,54,44,.09)",
+      "bar-bg": "rgba(250,252,251,.9)", "bar-border": "rgba(18,52,42,.1)", "bar-shadow": "0 1px 8px rgba(18,52,42,.07)",
+      "bg": "#f3f7f5", "bound": "#14734f", "bound-line": "rgba(20,115,79,.34)", "bound-soft": "rgba(20,115,79,.1)",
+      "cap-accent": "#0f6b52", "cap-bg": "#21342d", "cap-dim": "rgba(239,248,244,.55)", "cap-shadow": "0 4px 20px rgba(19,48,38,.24)", "cap-text": "#eff8f4", "cap-wave": "rgba(121,205,175,.72)",
+      "card-bg": "rgba(255,255,255,.84)", "card-border": "rgba(18,52,42,.11)", "card-shadow": "0 8px 32px rgba(18,52,42,.08)",
+      "desk-bg": "linear-gradient(160deg,#d9e5e0,#bfd3ca 42%,#9fbbb0 72%,#799e90)", "divider": "rgba(18,52,42,.1)",
+      "panel-bg": "#fbfdfc", "panel-border": "rgba(18,52,42,.12)", "panel-shadow": "0 12px 48px rgba(18,52,42,.12)", "panel-sub": "#53665e", "panel-text": "#17211d",
+      "scroll-thumb": "rgba(23,33,29,.24)", "scroll-thumb-hi": "rgba(23,33,29,.38)",
+      "text-primary": "#17211d", "text-secondary": "#53665e", "text-tertiary": "#7c8c85",
+      "toggle-active": "#0f6b52", "toggle-bg": "#d6e0dc", "warn": "#98600d", "warn-line": "rgba(152,96,13,.34)", "warn-soft": "rgba(152,96,13,.1)"
+    },
+    "dark": {
+      "accent": "#11664f", "accent-glow": "rgba(69,183,143,.28)", "accent-soft": "rgba(69,183,143,.12)",
+      "alert": "#ff746b", "alert-line": "rgba(255,116,107,.44)", "alert-soft": "rgba(255,116,107,.15)",
+      "bar-bg": "rgba(13,19,17,.92)", "bar-border": "rgba(187,225,211,.11)", "bar-shadow": "0 1px 8px rgba(0,0,0,.32)",
+      "bg": "#0d1311", "bound": "#56d39e", "bound-line": "rgba(86,211,158,.42)", "bound-soft": "rgba(86,211,158,.15)",
+      "cap-accent": "#11664f", "cap-bg": "#16251f", "cap-dim": "rgba(237,247,243,.5)", "cap-shadow": "0 4px 24px rgba(0,0,0,.38),0 0 0 1px rgba(86,211,158,.11)", "cap-text": "#edf7f2", "cap-wave": "rgba(112,218,176,.68)",
+      "card-bg": "rgba(24,34,30,.86)", "card-border": "rgba(187,225,211,.12)", "card-shadow": "0 8px 32px rgba(0,0,0,.34)",
+      "desk-bg": "linear-gradient(160deg,#08100d,#0d1a15 42%,#10251d 72%,#091511)", "divider": "rgba(187,225,211,.11)",
+      "panel-bg": "#18221e", "panel-border": "rgba(187,225,211,.12)", "panel-shadow": "0 12px 48px rgba(0,0,0,.4)", "panel-sub": "#a5b6af", "panel-text": "#edf5f1",
+      "scroll-thumb": "rgba(237,245,241,.23)", "scroll-thumb-hi": "rgba(237,245,241,.37)",
+      "text-primary": "#edf5f1", "text-secondary": "#a5b6af", "text-tertiary": "#6f8179",
+      "toggle-active": "#11664f", "toggle-bg": "#2b3934", "warn": "#f3b65c", "warn-line": "rgba(243,182,92,.42)", "warn-soft": "rgba(243,182,92,.15)"
+    }
+  }
+}
