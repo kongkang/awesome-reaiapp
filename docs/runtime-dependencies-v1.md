@@ -374,7 +374,7 @@ SHA-256、发布者、允许的平台签名者和撤回状态全部来自 Host �
 - `optional_on_demand`：插件可保持 degraded，用户之后通过 `install_managed_resource` 修复事务补装。
 
 字段、引用和正反样例以 Manifest Schema、Host/CLI validator 与
-`managed-requirements-v1.2.json`（仓库内 `packages/contract/managed-requirements-v1.2.json`；源码未纳入本站提交） 为准。
+`managed-requirements-v1.2.json`（仓库路径 `packages/contract/managed-requirements-v1.2.json`） 为准。
 
 ### 5.6 组件级依赖与功能级 `requiredFor`
 
@@ -649,4 +649,4 @@ Driver 新安装的官方 DSH / Pi / Codex 与官方插件原始程序按签名�
 版本选择、授权、会话与工作区仍私有。不同系统用户不共享；开发 override 不进入
 官方共享区。启动用 Host 公钥校验保留的服务器签名收据，再核对完整程序树。
 共享目录不能由单个账号的卸载/GC 删除；版本及空间保留策略见
-[Driver 内核门禁规范](https://github.com/ReAI-com/ai-vibe-board/blob/main/docs/driver-v2-kernel-startup-gate.md)。
+[插件等待与失败呈现规范](plugin-design-system-v1.md)。

@@ -4,9 +4,9 @@
 
 | 样板 | 适合参考 | 入口 | 语言适配 | 覆盖清单 |
 | --- | --- | --- | --- | --- |
-| Codex App | 原生 DOM、保留输入和焦点、受控错误与原文分开 | `plugins/codex-app/src/main.ts` | `src/i18n.ts` | I18N.md（仓库内 `plugins/codex-app/I18N.md`；源码未纳入本站提交） |
-| Codex Link | 多 Surface、后台恢复、审批和模型选择 | `plugins/codex-link/src/app.ts` | `src/codex-i18n.ts` | I18N_COVERAGE.md（仓库内 `plugins/codex-link/I18N_COVERAGE.md`；源码未纳入本站提交） |
-| Voice | 录音任务、播放器、嵌入式 chat-ui、错误和通知 | `plugins/voice/src/app.ts` | `src/voice-i18n.ts` | I18N_COVERAGE.md（仓库内 `plugins/voice/I18N_COVERAGE.md`；源码未纳入本站提交） |
+| Codex App | 原生 DOM、保留输入和焦点、受控错误与原文分开 | `plugins/codex-app/src/main.ts` | `src/i18n.ts` | I18N.md（仓库路径 `plugins/codex-app/I18N.md`） |
+| Codex Link | 多 Surface、后台恢复、审批和模型选择 | `plugins/codex-link/src/app.ts` | `src/codex-i18n.ts` | I18N_COVERAGE.md（仓库路径 `plugins/codex-link/I18N_COVERAGE.md`） |
+| Voice | 录音任务、播放器、嵌入式 chat-ui、错误和通知 | `plugins/voice/src/app.ts` | `src/voice-i18n.ts` | I18N_COVERAGE.md（仓库路径 `plugins/voice/I18N_COVERAGE.md`） |
 
 表中源码路径相对仓库根目录；语言适配路径相对对应插件目录。复制语言资源、挂接和测试模式即可，不必复制三个样板的业务功能、权限、应用 ID 或依赖。旧 `examples/todo-app` 仍是基础功能历史示例，不作为当前语言包样板。
 
@@ -58,7 +58,7 @@ const stopLocale = ctx.locale?.onChange(({ locale }) => {
 三个样板的包目录都可以运行：
 
 ```sh
-bun install --frozen-lockfile
+bun install --frozen-lockfile --ignore-scripts
 bun test
 bun run typecheck
 bun run validate
@@ -69,6 +69,6 @@ bun run pack
 
 其 `validate/build/pack` 使用 `@reai/app-i18n-cli` 的 `reai-app-i18n` 严格入口。在本仓库也可直接执行 `bun packages/i18n-cli/src/cli.ts validate <pluginDir>`；对独立开发者分发时，须先核对所使用的 CLI、SDK 与 Host 已发布版本，不能把仓库源码等同于 npm 或客户端已经发布。
 
-`bun scripts/verify-official-plugins.ts --plugin codex-app`（可换为 `codex-link` / `voice`）额外检查仓库外 tarball 安装、最终包与 Rust Host 安装生命周期。三个样板即使删除 `i18n` 声明也不能绕过检查；其他已声明包同样严格校验；未迁移的历史包继续原流程。
+本仓库使用样板目录中的现有脚本检查源码、语言资源与最终包。仓库外 tarball 安装和真实 Host 安装生命周期须单独验证，本仓库没有自动执行这两项验收的入口。源码能力审查被拒绝时，先补齐合法证据，不要删除语言声明或放宽检查来出包。
 
 自动检查证明格式、挂接及包完整性，不能判断翻译语义、真实服务或原生布局。提交覆盖清单，并分别记录英文布局、真实 Host、授权/服务连接及发布验收。

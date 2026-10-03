@@ -1,16 +1,16 @@
 # Driver V2 × 外脑：云能力、工作流分发与 Team 计费基线
 
-> 状态：**产品基线已确认；后端部分等待跨项目联合设计，不是对后端的直接修改指令**
+> 状态：**产品目标基线；具体能力以当前公开接口、Host 版本和平台审核状态为准**
 > 记录日期：2026-08-09
 > 适用范围：Driver V2 Host、插件开发者平台、外脑 OAuth、云模型能力、工作流安装与计费
-> 事实边界：本文严格区分“外脑 `main` 已实现”“本地可见未合并分支”“已确认产品目标”和“待决策”。
+> 事实边界：本文保留产品目标与权限合同。历史实现说明不代表当前线上或已安装版本已具备所有能力。
 
 ## 1. 一页结论
 
 Driver V2 不是把**外壳的**外脑 Token 交给插件，而是一个本地能力与云端能力的统一 Broker
 （2026-08-14 澄清：插件自己作为独立的外脑 OAuth App **有自己的令牌**，由外壳保管、经外壳通道使用、
 插件取不回，见
-`docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`（原 Board 仓库内 `docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`；未迁入））：
+[插件开发规范](plugin-development-v1.md#41-读取账户状态)）：
 
 ```text
 插件
@@ -65,11 +65,6 @@ Driver V2 不是把**外壳的**外脑 Token 交给插件，而是一个本地�
 | Credit Balance / Transaction | Team | 余额与消费流水 | “谁使用谁付费”最终表现为目标 Team 扣费 |
 | OAuth App | Owner User，可选 Team | 外部 App 的 client、scope 与 token 归因 | 一个插件沿用同一 `appId`，通过状态控制分发 |
 
-外脑当前表结构证据主要位于：
-
-- `wainao_editor/supabase/schema/parts/04-tables.sql`：`api_keys`、`credit_balances`、`credit_transactions`、`deployments`、`documents`、`projects`、`project_tool_installs`、`project_package_installs`、`tool_templates`、`tool_template_versions`、`tool_packages`、`tool_package_versions`。
-- `wainao_editor/supabase/schema/parts/05-constraints.sql`：上述对象到 Team、Project、Deployment 的外键和唯一约束。
-
 ### 2.2 默认个人 Team 与个人 Project
 
 外脑当前已经具备以下基础：
@@ -97,12 +92,6 @@ Driver V2 的联网能力使用独立的 `web:search` / `web:fetch` 窄权限；
 `POST /my/default-project/ensure`，用于取得服务端明确返回的个人默认 Project ID。它们不继承
 `mobile:full` 的上传、ROMP、设备或 Profile 权限。模型网关内部 ensure 仍不替代这条显式合同，
 Driver 或插件也不得直接调用底层 service-role RPC。
-
-证据：
-
-- `wainao_editor/supabase/migrations/20260525120000_auto_create_first_team.sql`
-- `wainao_editor/supabase/migrations/20260605130000_personal_default_project.sql`
-- `wainao_editor/apps/backend/src/routes/my.ts` 的 `/my/default-project/ensure`
 
 ### 2.3 个人系统 Team 标记与 owner-only 合同
 
@@ -136,19 +125,8 @@ Driver 或插件也不得直接调用底层 service-role RPC。
 - 新发布按 API Schema 变化决定版本推进；新版产生新记录。
 - 级联发布会把引用的 Flow 一并发布，并把依赖替换为对应 Deployment 引用。
 - Tool 节点不进入普通 Flow 级联树；Tool Template 自己锁定独立 Deployment 版本。
-- 当前生产代码没有发现对 `deployments.snapshot` 的常规原地更新路径，发布语义上把 `deployment_id` 当作不可变快照引用。
 
-但必须区分：
-
-- **应用服务语义上不可变：已具备。**
-- **数据库层禁止任何更新的强不变量：`main` 尚未完整锁死。**
-
-证据：
-
-- `wainao_editor/apps/backend/src/routes/deployments.ts`
-- `wainao_editor/apps/backend/src/services/cascade-deployment.ts`
-- `wainao_editor/supabase/migrations/20260722140000_document_versioning_g2_revision_mvp.sql`
-- `wainao_editor/supabase/migrations/20260622160000_workflow_capability_test_channel.sql`
+部署快照需要绑定版本和内容摘要。工作流公开分发前，必须按正式合同验证快照不可变性；不能仅凭发布成功推断已经满足。
 
 ### 3.2 Release 的作用
 
@@ -219,8 +197,6 @@ Release 是 Project 中的一份可编辑发布配置，负责把一个或多个
 
 复制后的文档归目标 Project，但它是普通可编辑 Document。这不满足“分发实例不可修改”的要求。
 
-证据：`wainao_editor/apps/backend/src/services/tool-package-installer.ts` 的 `installOpenSource()`。
-
 ### 4.2 Tool Template / 闭源 Package：引用锁定版本运行
 
 外脑 `main` 也支持另一种更接近目标的方式：
@@ -234,13 +210,6 @@ Release 是 Project 中的一份可编辑发布配置，负责把一个或多个
 - 不把源工作流作为可编辑 Document 暴露给安装方。
 
 这已经实现了“固定作者版本 + 安装方上下文执行”的大部分语义，但没有创建一个新的、由 B 的 Team 拥有的 Deployment Y。
-
-证据：
-
-- `wainao_editor/supabase/schema/parts/04-tables.sql` 的 `project_tool_installs`、`tool_template_versions`、`project_package_installs`。
-- `wainao_editor/apps/backend/src/routes/project-tool-templates.ts` 的安装、升级和卸载路由。
-- `wainao_editor/apps/backend/src/services/tool-package-installer.ts` 的闭源安装路径。
-- `wainao_editor/apps/backend/src/executor/blocks/tool.ts`：从安装记录加载锁定版本，并继承调用方 Project 与 Billing Context。
 
 ### 4.3 Driver V2 的目标：Team-owned Installed Workflow Instance
 
@@ -462,22 +431,13 @@ Driver V2 App 与当前设备，卸载插件不能假装撤销 macOS TCC；Drive
 - Driver/Vibe Board 的直接模型网关可以把 OAuth 用户桥接到其个人默认 Team 的隐藏系统 Key，并记录 OAuth App 归因。
 - Tool Template 在调用方 Project 上执行时会继承父运行的 Billing Context，已经接近“安装方 Team 付费”。
 
-### 6.2 当前 Release API 不能直接代表目标合同
+### 6.2 Installed Instance 的计费归属
 
-Release 的现有计费规则会根据调用方式选择不同付款来源：
-
-- Deployment 自带 `team_id` 时优先使用 Deployment Team；
-- 公开或跳过鉴权的 Endpoint 使用发布者配置的 API Key；
-- OAuth 调用在部分个人项目场景才回落到调用用户默认 Team；
-- 执行归因中仍存在“工作流主人”语义。
-
-因此不能仅给插件一个普通 Release URL，就宣称已经实现“安装到谁的 Team，谁付费”。Installed Workflow Instance 必须带明确的 `targetTeamId`，插件运行入口必须按该合同计费，不能继续依赖现有 Release 的多分支猜测。
-
-证据：`wainao_editor/apps/backend/src/routes/api-run.ts` 的 Deployment/Release Billing Context 选择。
+普通 Release URL 不自动建立安装实例与付款团队的关系。Installed Workflow Instance 必须绑定明确的 `targetTeamId`；执行时核对真实授权和账单归属，不能从工作流作者或客户端参数猜测付款来源。
 
 ### 6.3 归属与账单审计红线
 
-后续给外脑后端建立 Issue 时，必须把以下内容写成 P0 验收条件，而不是一般注意事项：
+公开分发前必须验证以下归属与账单条件：
 
 1. **身份不得折叠**：`sourceAuthorUserId`、`installedByUserId`、`targetTeamId`、`payerTeamId`、`pluginAppId` 必须分别记录，禁止用一个 `owner` 字段猜测多种语义。
 2. **目标 Team 必须服务端复核**：不能信任插件或客户端直接提交的 Team；安装、升级、调用、卸载时都要复核当前用户对目标 Team 的有效权限。
@@ -492,54 +452,13 @@ Release 的现有计费规则会根据调用方式选择不同付款来源：
 
 只有这些不变量通过数据库约束、服务端校验、计费流水和自动化测试共同证明，才能把该能力标记为可公开分发。
 
-## 7. OAuth 与权限开放现状
+## 7. OAuth 与权限合同
 
-### 7.1 `main` 已实现
-
-- OAuth Authorization Code + PKCE；
-- App scopes、redirect URI 白名单、token 刷新与撤销；
-- 用户按 App 查看并撤销授权；
-- 管理员禁用 OAuth App 并撤销 token；
-- `vibe-board:cloud` 模型网关能力；
-- 模型列表、文本对话和语音识别；
-- 按 OAuth App、User、Team 记录计费归因。
-- `POST /my/default-project/ensure` 可幂等确保并返回个人默认 Team / Project；普通用户 JWT，或具备
-  `mobile:full`、`web:search`、`web:fetch` 任一对应路由权限的 OAuth Token 可以调用。
-
-### 7.2 `main` 尚未实现
-
-- 开发者自助创建 App；当前 OAuth App 管理仍是 `site:admin` 后台能力。
-- `development → submitted → approved → suspended/delisted` 插件分发状态机。
-- `development` App 只能由 `owner_user_id` 授权的服务端硬约束。
-- 安装时选择目标 Team 的通用 OAuth/插件授权流程。
-- 按插件版本和具体工作流资源授权。
-- 图像、视频、OCR 等完整模型能力的 OAuth API；当前网关主要是 text / ASR。
-- Team-owned Installed Workflow Instance。
-- Driver V2 当前 `profile:read + vibe-board:cloud` 无权调用默认 Project ensure；不能用移动端
-  `mobile:full` 代替最小权限合同，需要增加窄 scope 或 Driver 专用服务端动作。
-
-现有 `oauth_apps.owner_user_id` 和 `is_official` 只是可复用字段，当前授权端点没有用它们实现开发者自用限制。
-
-证据：
-
-- `wainao_editor/apps/backend/src/routes/admin/oauth-apps.ts`
-- `wainao_editor/apps/backend/src/routes/oauth.ts`
-- `wainao_editor/apps/backend/src/utils/oauth-scopes.ts`
-- `wainao_editor/apps/backend/src/routes/model-gateway.ts`
-
-### 7.3 2026-08-08 可见未合并分支
-
-`auto/oauth-scope-control-plane`（`745133676c0e572a9a79a003c6cbe7d2c6d5dcda`）相对当时 `main` 领先一个提交，增加动态 Scope 生命周期、紧急停续签/禁用/撤销、影响反查和后台管理。
-
-它可以成为平台逐步开放云能力的治理底座，但没有实现：
-
-- 插件审核状态；
-- 开发态仅作者授权；
-- 目标 Team 选择；
-- 工作流安装实例；
-- 插件版本与资源级授权。
-
-该分支尚未合并，本文仅记录其存在，不能作为 Driver V2 当前依赖。
+- OAuth 授权使用 Authorization Code + PKCE，并按 App 检查 scope、redirect URI、刷新和撤销。
+- 用户应能查看并撤销各 App 的授权；管理员停用不等于已安装版本自动获得新权限。
+- 模型列表、文本对话和语音识别的可用性，以当前 Host 支持矩阵与实际云端返回为准。
+- 默认个人空间、开发者自用、体验者、公开分发和 Installed Workflow Instance 是不同合同。普通 OAuth 授权不自动授予这些能力。
+- 团队选择、资源级授权、图像、视频或 OCR 等目标能力，须以正式公开接口及其版本为准。
 
 ## 8. Driver V2 的本地权限与云权限分层
 
@@ -621,55 +540,8 @@ Release 的现有计费规则会根据调用方式选择不同付款来源：
    权限减少、价格降低以及同权限范围内的工作流变化不重复索取权限，但必须在升级说明中展示。
 4. **拒绝路径**：拒绝不会改变现有安装版本；旧版被安全停用时只停止运行，不自动切换版本或迁移数据。
 
-## 11. 跨项目协作与变更边界
+## 11. 能力变更与兼容边界
 
-本文是 Driver V2 向外脑提出的产品需求、目标不变量与风险清单，不是要求后端据此直接修改代码。凡涉及
-`wainao_editor` 的功能，必须遵循：
+新的云端能力必须明确职责、权限、计费归属、版本兼容和失败恢复行为。插件不能把本页的目标字段当作现有 SDK 或服务端接口。
 
-1. 开发前重新核对后端最新分支、现有业务流程、数据模型、API、计费与权限边界。
-2. Driver V2 与后端共同确认产品合同、职责边界、兼容策略、数据迁移、审计要求和失败/回滚行为。
-3. 后端 Issue 先描述问题、目标语义、验收条件、风险和待确认项；未共同确认前，不把本文中的候选字段、
-   接口或流程写成指定实现。
-4. 具体技术方案由后端结合现状提出并与 Driver V2 联合评审；涉及双方合同的变更需要两边共同验证。
-5. 归属、账单、密钥和存量数据迁移属于高风险项，不能由任一项目单方面决定或静默兼容。
-6. 只读 Ask Project 调研用于建立讨论背景，不授权修改目标仓库，也不能代替开发时的最新代码复核。
-
-## 12. 调研边界
-
-本次通过 `ask-project` 以 read-only 方式咨询 `/Users/kongkang/Developer/wainao_editor`：
-
-- 当时 `main` 与本地 `origin/main` 均为 `a976372e5f6603ef6eb6bba5293aa91519388568`，工作区干净。
-- 已核对 main、可见 refs/worktrees、实体表、Deployment/Release、Tool Template/Package、OAuth、模型网关和计费路径。
-- GitHub Issue 实时查询因网络连接失败，不能声称已经盘点远端所有 Issue。
-- 独立咨询进程完成取证后，在生成最终长报告时因连接重试长时间无输出而被终止；本文只采用它已经返回的代码与 Git 证据，不把未返回的推断写成事实。
-- 随后再次只读核对默认 Team/Project 专题并完整返回：确认了 ensure 接口、幂等与保护规则、现有调用方、
-  Driver scope 缺口，以及“private 仍对 Team 成员可读”和 Team 转让可能破坏归属不变量的风险。本轮未
-  fetch，因此事实代表目标仓库当时本地 `main`，不能代替未来开发前的最新分支复核。
-
-### 12.1 2026-08-09 自动开发前复核
-
-本轮再次通过 Ask Project 只读核对 `wainao_editor` 本地 `main`（`a976372e5f6603ef6eb6bba5293aa91519388568`，
-相对本地 `origin/main` ahead/behind 均为 0，工作区干净；未 fetch）。结论进一步收敛为：
-
-- `vibe-board:cloud` 已能调用模型列表、文本 Chat Completions 和音频转写，模型网关内部会为 OAuth 用户
-  ensure 默认 Team/Project 与隐藏系统 API Key，并记录 user / OAuth App / Team / Project 计费归因。
-  因此 Driver 可以在不向插件暴露 Token 或 API Key 的前提下先做结构化模型 Broker；图像、视频与 OCR
-  不能因多模态模型可能可用就自动宣称为稳定 `vision.recognize` 合同。
-- `/my/default-project/ensure` 不开放给 `profile:read + vibe-board:cloud`；Driver 只有在用户重新授权
-  `web:search` 或 `web:fetch` 后才能调用，而且这不等于拥有通用个人空间管理权限。
-- Deployment 级联发布已递归处理 Flow、冻结 revision、检测循环并尝试失败回滚；但构建 Tool manifest
-  失败时存在 warning 后回退原 snapshot 的路径，不能满足插件公开发布必须 fail closed 的递归诊断要求。
-- Tool Template/Package 的版本、安装和 required config 可复用为底层素材，但现有 Template 版本切换允许
-  选择旧 published 版本；Package 更新还可能先移除旧内容再装新版，均不能直接当作插件“失败保留旧版、
-  成功默认不可降级”的正式升级合同。
-- 现有 Release 计费可能选择 Deployment Team 或发布者配置 Key，不等于 Installed Instance 的安装者
-  Team 付费；正式插件运行不得把该多分支逻辑当作“谁使用谁付费”的证明。
-- 仓库中的 Tool Package RLS 定义存在 published 即可读、未按 private/team/global 再分层的风险；正式
-  联合开发前需要后端核对真实已部署策略，并同时验证 API 与 RLS 两层越权反例。
-- Template/Package 会保存客户端提交的 hidden input defaults。现有 secret scanner 能提取密钥名称，
-  但尚不足以证明默认值中不含作者私有值；正式发布 API 必须服务端重跑值泄漏与可移植性检查。
-- 当前后端仍只识别 Driver 这个 OAuth App 和用户，不识别经 Driver 调用的具体插件版本。云能力公开分发前
-  必须共同确定可验证的 plugin/version 归因，不能信任插件自己在请求参数中声明身份。
-
-本轮 Ask Project 的完整只读输出保存在会话和临时审计结果中；上述内容只进入 Driver 的产品/合同文档，
-不构成对后端仓库的修改授权。
+归属、账单、凭据或存量数据边界变化时，须重新核对授权和用户同意。部署、平台审核、公开上架和真实 Host 安装各自保留独立验证结果。

@@ -3,7 +3,7 @@
 > 文档定位：给 App 开发者看的第一份文档<br>
 > 协议状态：**Design v1.1 目标合同；Driver V2 已实现其中一个受支持子集**<br>
 > 日期：2026-08-12<br>
-> 设计依据：Design 交互规范（原 Board 仓库内 `design/DESIGN.md`；未迁入） · 可运行设计稿（原 Board 仓库内 `design/VoiceType_UI_Designs.html`；未迁入）<br>
+> 设计依据：[插件设计规范](plugin-design-system-v1.md) · [可运行设计示例](plugin-design-system-v1.html)<br>
 > 冲突优先级：本 v1.1 合同覆盖旧 Design 中“Voice 不可卸载”等 v1.0 假设；旧稿只作为界面依据<br>
 > 政策附录：[发行渠道](distribution-policy-v1.md) · [运行依赖](runtime-dependencies-v1.md) · [网络与计费](network-billing-policy-v1.md)<br>
 > 交互版：[打开交互式开发指南（HTML 快照，可能滞后于本文）](app-development-guide-v1.html)
@@ -143,7 +143,7 @@ Mini Player、完整设备控制、全局 Overlay、多窗口、动态增加侧�
   → 打包并提交审核
 ```
 
-下面的代码只讲解最小 App Platform 合同。仓库中的 canonical To-Do 样例已经扩展为可执行的“日程 Agent V1”，增加了异步 Mock、事件树、日历和 Agent Drawer；这些产品层模块不会改变本章说明的 Surface / Command / Intent / Storage 基础合同。完整结构与接口见 To-Do 日程 Agent V1（原 Board 仓库内 `docs/todo-agent-v1.md`；未迁入）。
+下面的代码只讲解最小 App Platform 合同。仓库中的 canonical To-Do 样例已经扩展为可执行的“日程 Agent V1”，增加了异步 Mock、事件树、日历和 Agent Drawer；这些产品层模块不会改变本章说明的 Surface / Command / Intent / Storage 基础合同。完整样例见 To-Do 插件（仓库路径 `examples/todo-app/README.md`）。
 
 最小教学结构：
 
@@ -826,7 +826,7 @@ export function mountTodoView(root: HTMLElement, options: TodoOptions) {
 
 ### 完整 starter 在哪里
 
-打开完整日程 Agent 样例（仓库内 `examples/todo-app/README.md`；源码未纳入本站提交）。本章代码块刻意保留最小教学版本；canonical 样例在相同 Platform 合同上增加模型、单写者队列、Mock workflow、日历、详情和 Agent Drawer，并继续作为工具链验收对象。它拥有自己的 `package.json` 与 `bun.lock`，不加入 Driver workspace；CI 会先用冻结 lock 验证源码，再把 Platform 包成 tarball、复制样例到仓库外，重复测试、构建、合同测试、确定性打包和 Host 安装生命周期。
+打开完整日程 Agent 样例（仓库路径 `examples/todo-app/README.md`）。本章代码块刻意保留最小教学版本；canonical 样例在相同 Platform 合同上增加模型、单写者队列、Mock workflow、日历、详情和 Agent Drawer，并继续作为工具链验收对象。它拥有自己的 `package.json` 与 `bun.lock`，不加入 Driver workspace；CI 会先用冻结 lock 验证源码，再把 Platform 包成 tarball、复制样例到仓库外，重复测试、构建、合同测试、确定性打包和 Host 安装生命周期。
 
 ---
 
@@ -1407,11 +1407,9 @@ Todo/Codex Link 继续用 1.1 做向后兼容烟测；声明 `system.tasks@1` �
 | `pack` | 可复现 `.reaiapp`（字典序 + 固定 mtime + 不压缩）+ archiveDigest 包身份 | ✅ 已落地 |
 | `init` | Manifest、入口、视图和测试模板 | 未实现；语言包按[三个官方样板](plugin-i18n-examples.md)准备，基础业务可参考 `examples/todo-app` |
 | `dev` | Mock Host、热更新、侧栏和 Surface 仿真 | 未实现（用「改代码 → pack → 重装」循环） |
-| `inspect` | 查看 activate、Surface、Command、存储和错误事件链 | 未实现（看 `make driver-v2-logs`） |
+| `inspect` | 查看 activate、Surface、Command、存储和错误事件链 | 未实现；使用当前 Host 提供的诊断入口 |
 
-从零到装进本机 App 的完整流程（含开发者模式、错误对照表）见仓库
-`.claude/skills/develop-reai-extension/SKILL.md`——它是 A11 验收的实操脚本，
-2026-08-04 按它从零走通过一遍。
+从编写插件到本机安装的流程见[插件开发规范](plugin-development-v1.md)。构建、合同测试、Developer Mode 安装与真实 Host 验收需要分别完成。
 
 To-Do 的合同测试至少验证：
 
@@ -1584,10 +1582,9 @@ Review 时的判据很直白：**遮住页面其余部分，单看这颗按钮�
 | Action 上下文广播与菜单 | ✅ C1-5：宿主存证（TTL/容量/引用传递/一次性取件 token）+ 菜单实时聚合、选中单发（Action 键默认唤起） |
 | 复合 Runtime Component 与 Headless | 未实现（首版矩阵限单 web-surface 组件） |
 | App Package 签名、审核、Catalog 与在线更新 | 未实现（对外开放前置，见主计划 §7） |
-| 插件自有外脑 OAuth 身份 | 未实现（方案已定 2026-08-14：每个插件是独立外脑 OAuth App，令牌由 Host 保管、请求经 Host 通道代发、上架只过 ReAI 一道审核；受外脑自助 App 体系闭环制约，见 `docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`（原 Board 仓库内 `docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`；未迁入）） |
+| 插件自有外脑 OAuth 身份 | 未实现（方案已定 2026-08-14：每个插件是独立外脑 OAuth App，令牌由 Host 保管、请求经 Host 通道代发、上架只过 ReAI 一道审核；受外脑自助 App 体系闭环制约，见 [云能力与权限分层基线](wainao-cloud-workflow-distribution-v1.md)） |
 
-「让另一个开发者不改仓库代码就独立完成一个扩展」已可实操：照
-`.claude/skills/develop-reai-extension/SKILL.md` 从零走到装进本机 App（A11）。
+独立开发者可使用[插件开发规范](plugin-development-v1.md)和公开样例完成本机开发验证。具体能力仍按当前 Host 版本和支持矩阵检查。
 
 ---
 

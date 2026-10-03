@@ -25,13 +25,13 @@
 
 ## 已确认的品牌 Logo
 
-2026-10-02 用户确认候选1和3：页头及页脚使用 [黑绿透明底 Logo](assets/reai-logo.svg)，来自 `wainao_editor` 的 `Logo.vue` 按真实页头配色提取的静态状态；站点 favicon 使用 [白色圆角底图标](assets/reai-app-icon.svg)，来自 `ai-vibe-board/driver-v2/src-tauri/icons/icon-source.svg` 原文件。原形状与颜色保留，来源及摘要见 [brand-sources.json](assets/brand-sources.json)。
+2026-10-02 确认候选1和3：页头及页脚使用 [黑绿透明底 Logo](assets/reai-logo.svg)，站点 favicon 使用 [白色圆角底图标](assets/reai-app-icon.svg)。保留原始形状与颜色，公开来源说明及摘要见 [brand-sources.json](assets/brand-sources.json)。
 
-候选4的旧绿色麦克风品牌标识已废弃，已从本项目候选页和临时 SVG 副本移除，不再作为平台 Logo。此项不涉及其他项目的源码清理。候选对照页仅保留在本地主工作区，未纳入网站 PR。已发布站点及公开源码只复用已确认的品牌文件。
+候选4的旧绿色麦克风品牌标识已废弃，已从本项目候选页和临时 SVG 副本移除，不再作为平台 Logo。此项不涉及其他项目的源码清理。候选对照页保留原编号，并标明1和3已确认、2未选。
 
 ## 本地构建与预览
 
-使用本机 Node.js、Bun 和 Python 3。文档依赖复用 `website/`；首次使用如缺少依赖，在该目录执行 `bun install --frozen-lockfile`。开放平台自身不新增第三方运行依赖。网站可在不包含 `plugins/`、`packages/` 或本地 skill 的干净 checkout 中构建；`scripts/legacy-app-ids.json` 仅保留旧入口身份，不提供名称、版本或发布状态。
+使用本机 Node.js、Bun 和 Python 3。文档依赖复用 `website/`；首次使用如缺少依赖，在该目录执行 `bun install --frozen-lockfile`。开放平台自身不新增第三方运行依赖。
 
 ```sh
 cd open-website
@@ -48,7 +48,7 @@ bun run preview
 
 - 公开数据适配与详情：`public-catalog.js`；页面模板：`scripts/templates.mjs`；场景：`scripts/content.mjs`。
 - 首页与交互：`index.html`、`app.js`；样式：`styles.css`、`pages.css`。
-- 文档事实源：仓库 `docs/`，复用 `website/` 构建，避免内容分叉。`deployment-status.md` 与 `worktree-workflow.md` 是仓库运维说明，不进入访客文档站。
+- 文档事实源：仓库 `docs/`，复用 `website/` 构建，避免内容分叉。
 - [设计调研与方向取舍](design-direction.md)保留首版视觉依据。
 
 线上文档现提供 [open.reai.com/docs](https://open.reai.com/docs/) 与[英文指南](https://open.reai.com/docs/en/)，旧 [ai-board.reai.com/docs](https://ai-board.reai.com/docs/) 继续保留。安装分发、客户案例、插件设置页改造和服务器版本介绍服务分别验收；网站上线不表示这些已完成。
@@ -61,10 +61,10 @@ bun run preview
 
 ## 发布
 
-目标为 `root@cn.reai.com` 的独立 Nginx 静态目录，发布说明、HTTPS 配置及回滚见 [deploy/README.md](deploy/README.md)。当前发布标识见 [release.json](https://open.reai.com/release.json)。部署只上传网站静态产物。
+发布检查见 [deploy/README.md](deploy/README.md)。真实主机、配置、目录和回滚命令保留于本地。当前发布标识见 [release.json](https://open.reai.com/release.json)。部署只上传网站静态产物。
 
 2026-10-03：最终候选构建及8项测试通过；317个线上文件摘要与候选一致；真实浏览器确认中英文及对应语言下载入口，公开 Catalog 刷新、版本参数、文档往返和移动端布局。
 
 ## 验证
 
-2026-10-02：构建和6项测试通过，覆盖本地规范数据校验、公开 Catalog 字段隔离/无凭据请求/接口失败、内容转义、整站链接及文档返回/锚点回归。真实浏览器确认公共接口刷新成功、7个远端图标加载、公开详情、手机目录定位及文档客户端换页后返回首页；375 / 768 / 1024 / 1440px 的20次页面布局检查无整页横向溢出。截图在本机忽略目录 `.artifacts/open-website/`。VitePress 保留已有部分 chunk 超过500kB的构建提示。
+2026-10-02：构建和6项测试通过，覆盖本地规范数据校验、公开 Catalog 字段隔离/无凭据请求/接口失败、内容转义、整站链接及文档返回/锚点回归。真实浏览器确认公共接口刷新成功、7个远端图标加载、公开详情、手机目录定位及文档客户端换页后返回首页；375 / 768 / 1024 / 1440px 的20次页面布局检查无整页横向溢出。详细验收材料保留于本地。VitePress 保留已有部分 chunk 超过500kB的构建提示。

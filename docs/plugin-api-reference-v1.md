@@ -181,11 +181,11 @@ status(): Promise<AccountStatusResult>;
 
 明确不会返回用户身份、邮箱、Team、Project、余额、token 或任何 OAuth 凭据。
 
-这不是暂缺，而是刻意的边界（2026-08-13 PR #235 把身份从该合同移除的真正原因）：**外壳不替插件转发
+这不是暂缺，而是刻意的边界：**外壳不替插件转发
 身份**。已定架构下每个插件是独立的外脑 OAuth App，身份属于插件自己的权限范围，应当经外壳通道用
 插件自己的令牌去取，而不是从外壳合同里读。Host 现已对 Catalog/public 与 LocalDeveloper/development 分开代签、
 保管和运行校验；开发调用每次实时重验当前账号、draft revision 与 scope 资格，且不向插件暴露 token。方案与理由见
-`docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`（原 Board 仓库内 `docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`；未迁入）。
+[云能力与权限分层基线](wainao-cloud-workflow-distribution-v1.md)。
 
 ### `ctx.notifications.post(options)`
 
@@ -412,7 +412,7 @@ interface HostTitlebarActionIntent<TPayload = unknown> {
 
 `titlebar.action@1` 是 Host 限定显示与投递的普通开放能力，不是用户权限，也不需要
 `capabilityGrants`。可运行合同见
-`examples/titlebar-actions-app`（仓库内 `examples/titlebar-actions-app/README.md`；源码未纳入本站提交）。
+`examples/titlebar-actions-app`（仓库路径 `examples/titlebar-actions-app/README.md`）。
 
 ## 6. Command
 
@@ -1267,7 +1267,7 @@ Host API 1.10 增加两条彼此独立、按 `appId` 授予的官方插件窄口
 文本编辑器的 `pickWorkspace()` 必须由当前可见 Surface 的用户手势触发系统目录面板。后续方法只收 Host
 签发的 `workspaceId + relative path`；每次访问都重新检查 canonical path 与 symlink containment。保存必须
 回传读取时的 revision，冲突时先比较再由用户决定，不能覆盖。完整方法与发布门禁见
-Codex App 与本地文本编辑器（原 Board 仓库内 `docs/driver-v2-codex-app-text-editor.md`；未迁入）。
+对应实现见本仓库的 Codex App（仓库路径 `plugins/codex-app/README.md`） 与文本编辑器（仓库路径 `plugins/text-editor/README.md`）。
 
 Codex App 的 `folderPick.pick()` 也会在 Host 留下不可由插件伪造的 cwd grant。`startThread(cwd)`、带 cwd
 的 Skills 查询与文件 handoff 都只接受该 grant 内的 canonical 目录；“路径绝对且存在”本身不构成授权。
@@ -1406,7 +1406,7 @@ Manifest 只表达“需要什么”，不产生批准。Host 从独立机器 po
 | Package 解压后 | 256 MiB |
 | Package 单文件 | 32 MiB |
 
-平台全局限额以 `host-support-matrix.json`（仓库内 `packages/contract/host-support-matrix.json`；源码未纳入本站提交） 为准。通知专用的
+平台全局限额以 `host-support-matrix.json`（仓库路径 `packages/contract/host-support-matrix.json`） 为准。通知专用的
 80/500 字符与 5 次/10 秒限制目前由 Host 和 Mock Host 的行为测试锁定，以本节通知合同为准。
 
 ## 14. 工具接口

@@ -172,7 +172,7 @@ Skin v1 暂不开放图片、字体、SVG 等自定义素材。包格式已经�
 
 ```bash
 cd examples/skins/codex
-bun install --frozen-lockfile
+bun install --frozen-lockfile --ignore-scripts
 bun run test
 bun run typecheck
 bun run validate
@@ -183,9 +183,7 @@ bun run pack
 
 `build` 会同时校验 Manifest、`skin.json` 结构、尺寸、完整 token 集和危险值，并生成互斥的 `skinEntry` Build Manifest；Host 安装时会独立再校验一次，不能信任客户端构建结果。
 
-仓库内 `file:` 依赖只用于联调。正式验收还要把 Platform CLI 打成 tarball，将皮肤源码复制到仓库外，
-用 tarball 安装后重复测试、构建和两次打包，并确认两个 `.reaiapp` 摘要一致；仓库统一入口是
-`make plugin-examples-verify`。
+仓库内 `file:` 依赖只用于联调。正式独立分发验收还需要验证仓库外 tarball 安装，并重复测试、构建和打包，核对最终包摘要。本仓库没有自动执行该验收的入口；上面的命令通过不代表这项验收已完成。
 
 本地测试需要在 Driver V2 开启 Developer Mode，再导入 `.reaiapp`。安装成功后：
 

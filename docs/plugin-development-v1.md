@@ -2,16 +2,13 @@
 
 > 文档状态：除明确标为“规划，尚未实现”的章节外，均对应当前可运行实现
 >
-> Host API：`1.17.0`（路由权限合同本地候选，尚未发布）（不使用新版能力的既有 `>=1.1.0 <2.0.0` 插件继续兼容）
+> 工具链合同：本仓库支持矩阵和 SDK/contract 为 `1.24.0`。实际已安装 Host 的支持范围仍须单独核对；源码合同不代表客户端已经发布。
 
-> **1.17 工具链分发边界**：本候选目前支持仓库私有 workspace，以及由同一源码提交生成的
-> SDK、contract、CLI、test-kit 整套 tarballs（按 `verify-platform-packages.ts` /
-> `verify-official-plugins.ts` 的显式 overrides 安装）。CLI 1.2 的已批准 package 字节与
-> SDK/contract 1.16 精确依赖保持不变；单独安装旧 CLI 1.2 不会支持 1.17 候选。
-> 1.17 尚未作为独立 registry 工具链发布，正式独立分发需另走 CLI 版本与批准流程。
+> **本仓库验证入口**：在 `packages/` 安装冻结依赖，运行 `bun run test` 和 `bun run typecheck`。再进入目标 `plugins/<slug>/` 或样例目录，运行其 README 中的测试、类型检查、校验、构建、合同测试和打包命令。
+> 本仓库没有自动执行仓库外 tarball 安装或真实 Host 安装生命周期的入口。这两项验收须单独完成；本地 `file:` 依赖和 Mock Host 通过不能替代独立分发、平台批准或真实安装证据。
 
 >
-> 最后核对：2026-08-30
+> 最后核对：2026-10-03（本仓库合同与命令入口）
 >
 > 接口细节：[Driver V2 插件接口参考 v1](plugin-api-reference-v1.md)
 >
@@ -29,23 +26,7 @@
 
 2026-10-02 新产品要求：全部插件的设置页底部必须提供版本号与「关于插件」；版本点击进入精确版本更新日志，关于进入开放平台具体应用。每次送审由开发工作流自动撰写版本介绍。见[设置页与版本文档规范](plugin-settings-and-release-notes-v1.md)；现有插件与服务需分别实施验收，不因规范新增而视为已实现。
 
-仓库内官方插件在 macOS 可用 `make plugin-dev-builtin PLUGIN=<slug>` 与 `make plugin-dev-run
-PLUGIN=<slug>`，Windows 使用 `pwsh -File .\scripts\run-driver-v2-plugin-dev.ps1 -Plugin <slug>`：
-两边都会先跑插件自己的测试、类型检查、合同测试和确定性双打包，再让覆盖包按摘要进入独立
-plugin-dev profile，不依赖版本号或正式 seed。Windows 入口默认构建带 `dev-tools` 的本地 Host；
-已有本分支 debug exe 可传 `-SkipHostBuild -AppPath <绝对路径>` 跳过 Host 重建。
-该 profile 的账号、设置、插件数据、会话、日志和浏览器状态与普通 Driver 分开，首次需单独登录；
-结构化数据与可变 Voice 模型位于 `.artifacts/plugin-dev-profile/`，只共享按摘要定址且命中时复验的
-runtime 下载归档。WebView cookie/localStorage 使用独立 store：macOS 的 shell/OAuth/Browser 是三个
-独立 `WKWebsiteDataStore`；Windows 每个静态窗口位于
-`%LOCALAPPDATA%\\<window-label>\\reai-board-webview-<profile-id>`（每个静态窗口 label 各一份），
-动态 Host/OAuth/Browser 数据在 instance 的 `local-data/` 下。启动脚本会逐个打印全部精确位置，也可运行
-`bun scripts/plugin-dev-profile-info.ts --instance <绝对 instance 路径>` 重算。完整清理前先退出 App，
-再只删除该命令列出的 plugin-dev 路径；只删 instance 目录不等于清空系统 WebView store。
-它仍争用同一硬件锁，不能和普通 Driver 同时做 HID/BLE/音频操作。macOS 14+ 才支持主窗口与
-受管浏览器所需的独立 WebView store；更旧系统会拒绝启动 plugin-dev。通用 `dev-tools +
-REAI_DRIVER_V2_INSTANCE_DIR` 会绕过硬件锁，只适合无副作用并行验收。这个本地快捷通道不会改变
-正式上架规则：官方插件对外发布仍与第三方共用申请、审核、权限确认、摘要绑定和 Catalog 流程。
+独立插件的开发、构建与打包命令以本仓库各插件 README 为准。本机安装通过 Driver 的 Developer Mode 完成；该入口仍要求显式安装与权限同意，不代表正式审核或公开上架批准。
 
 本文统一使用以下产品术语：
 
@@ -59,9 +40,9 @@ REAI_DRIVER_V2_INSTANCE_DIR` 会绕过硬件锁，只适合无副作用并行验
 遇到两份文档不一致时，当前实现以本页、[接口参考](plugin-api-reference-v1.md) 和三份机器可读
 事实源为准：
 
-- `host-support-matrix.json`（仓库内 `packages/contract/host-support-matrix.json`；源码未纳入本站提交）：开放能力、权限、限额和稳定错误码；
-- `app-manifest-1.1.schema.json`（仓库内 `packages/contract/schemas/app-manifest-1.1.schema.json`；源码未纳入本站提交）：Manifest 结构；
-- `fixtures/manifests/`（原 Board 仓库内 `platform/contract/manifest-fixtures`；未迁入）：Host 与 CLI 共用的正反样例。
+- `host-support-matrix.json`（仓库路径 `packages/contract/host-support-matrix.json`）：开放能力、权限、限额和稳定错误码；
+- `app-manifest-1.1.schema.json`（仓库路径 `packages/contract/schemas/app-manifest-1.1.schema.json`）：Manifest 结构；
+- `manifest-fixtures/`（仓库路径 `packages/contract/manifest-fixtures/`）：Manifest 合同正反样例。
 
 ## 1. 当前边界
 
@@ -110,7 +91,7 @@ App Service 的最小类型化调用子集已实现（Host API 1.14 起），见
 - 插件声明 Agent Scene、动态 Agent Tool Catalog 和同会话能力热更新；
 - 无主 Surface 的 headless Service App；
 - 未审核插件的公开分发、在线更新和团队空间切换。
-- Windows 第三方本地安装；当前 WebView origin 隔离未完成，Host 会 fail closed。
+- Windows 第三方本地安装；当前版本不支持，Host 会拒绝该路径。
 
 开发者模式只用于开发调试，不代表平台审核通过；本地包不能公开分发。插件作者固定可以测试且
 不占体验者名额，并可为同一插件 Product 添加最多 5 名开发期体验者。每名体验者仍须自行显式安装
@@ -155,7 +136,7 @@ App Service 的最小类型化调用子集已实现（Host API 1.14 起），见
 > 插件不得声明 URL、摘要、签名者、磁盘路径或任意命令。Direct 生产安装还依赖 ReAI 发布签名目录、
 > 编译期公钥和已签名/公证的 `.reairuntime`；这些发布资产未配置时 Host fail closed。其他依赖分类、
 > 复合 Runtime Component、Store 渠道下载可执行代码仍是目标合同。具体字段始终以 Schema、支持矩阵和
-> `managed-requirements-v1.2.json`（仓库内 `packages/contract/managed-requirements-v1.2.json`；源码未纳入本站提交） 为准。
+> `managed-requirements-v1.2.json`（仓库路径 `packages/contract/managed-requirements-v1.2.json`） 为准。
 
 ### 1.2 改成插件不等于重新设计界面
 
@@ -178,18 +159,18 @@ App Service 的最小类型化调用子集已实现（Host API 1.14 起），见
 插件再在自己的目录安装自己的冻结依赖，不能借用 Driver workspace：
 
 ```bash
-cd /path/to/ai-vibe-board/platform
-bun install --frozen-lockfile
+cd /path/to/awesome-reaiapp/packages
+bun install --frozen-lockfile --ignore-scripts
 cd ../examples/todo-app
-bun install --frozen-lockfile
+bun install --frozen-lockfile --ignore-scripts
 ```
 
 仓库内可运行的参考插件是
-`examples/todo-app`（仓库内 `examples/todo-app/README.md`；源码未纳入本站提交）。它覆盖 Surface、Command、
+`examples/todo-app`（仓库路径 `examples/todo-app/README.md`）。它覆盖 Surface、Command、
 Intent、KV、合同测试和打包，但刻意不申请任何权限。
 
 标题栏动作的最小第三方样例是
-`examples/titlebar-actions-app`（仓库内 `examples/titlebar-actions-app/README.md`；源码未纳入本站提交）。它不进入
+`examples/titlebar-actions-app`（仓库路径 `examples/titlebar-actions-app/README.md`）。它不进入
 Host 内置 seed，工具链四连后必须通过 Developer Mode 本地安装，正好覆盖普通插件路径。
 
 如果插件放在仓库之外，本地联调阶段可以在自己的 `package.json` 中用 `file:` 指向 CLI、SDK
@@ -243,7 +224,7 @@ my-app/
 ```
 
 完整 Manifest 不建议从文档手抄，请复制
-`todo-app/app.manifest.json`（仓库内 `examples/todo-app/app.manifest.json`；源码未纳入本站提交） 后修改。至少保持：
+`todo-app/app.manifest.json`（仓库路径 `examples/todo-app/app.manifest.json`） 后修改。至少保持：
 
 - `appId` 使用反向域名格式，并作为插件长期身份；
 - `hostApi.range` 至少包含你实际使用的 Host API；当前接受三段版本的精确值、比较器、caret 与
@@ -544,7 +525,7 @@ export async function readAccountStatus(ctx: AppContext): Promise<AccountStatusR
 返回值只有 `{ enabled: boolean, loggedIn: boolean }`，不会返回用户 ID、邮箱、Team、Project、
 余额、access token 或 refresh token。这是刻意的边界，不是待补功能：**外壳不替插件转发身份**。
 已定架构下每个插件是独立的外脑 OAuth App，需要用户身份时应当经外壳通道用插件自己的令牌去取，见
-`docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`（原 Board 仓库内 `docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`；未迁入）。
+[云能力与权限分层基线](wainao-cloud-workflow-distribution-v1.md)。
 
 `oauthAppId` 始终是插件自己的 OAuth Client ID；Manifest `appId`、OAuth Client ID 和发布版本是三个不同身份。
 上架包必须声明当前产品的 `oauthAppId` 和团队 `publisherId`，Product ID 单独记录在提交配置；完整字段映射、最终 ZIP 预检和 `universal` 的正确位置见[插件上架打包与提交规范](plugin-submission-v1.md)。
@@ -918,7 +899,7 @@ Service/headless App 也不必占侧边栏，统一在“更多/已安装 App”
 - `toolBase` 是用户可勾选的**基集上限**：用户只能在插件声明的集合内调整工具，勾选也不等于
   授权——能力审批、用户同意与工作区/模式闸照旧生效；
 - 每插件最多 16 项功能、每个功能最多 16 个参数槽与 32 个工具引用，具体限额以
-  `host-support-matrix.json`（仓库内 `packages/contract/host-support-matrix.json`；源码未纳入本站提交） 的 `contributes.agentFeatures` 为准。
+  `host-support-matrix.json`（仓库路径 `packages/contract/host-support-matrix.json`） 的 `contributes.agentFeatures` 为准。
 
 创建会话时用 `featureRef` 指认其中一项，Host 以此把声明默认值与用户覆盖合并：
 

@@ -18,4 +18,9 @@ website/.vitepress/cache/
 website/.vitepress/dist/
 /skills/
 /.migration-review/
-.worktree/
+
+/docs/migration-source-map.json
+/open-website/deploy/*.conf
+/open-website/deploy/*.sh
+/open-website/logo-candidates.html
+/plugins/*/submission.identity.json
