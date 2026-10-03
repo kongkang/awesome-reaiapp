@@ -1,10 +1,12 @@
 # ReAI App 平台规范更新日志
 
-## 2026-10-03 · 主工作区固定 main 与站点源码独立提交
+## 2026-10-03 · 公开文档脱敏与开发入口
 
-- 项目提示词明确：永远不允许修改主工作区的分支，所有工作都要在 worktree 里完成；PR 合并后只快进同步主 main。
-- 已发布站点与整合文档独立提交，不夹带插件、共享工具或本地 skill；旧入口只保存 appId，网站构建不再读取未提交的插件源码。
-- 文档中未纳入公开仓库的源码引用改为明确标注的路径说明，完整规范正文与能力边界保留。
+- 公开文档保留 API、能力声明、用户授权、限额、版本兼容与候选状态；移除本机路径、内部审计、未合并分支和私人操作记录。
+- 公开分发说明保留 Developer Mode 的实际用途与隔离限制；内部安全审查和修补细节留在仓库外。
+- 送审与云工作流说明改用公开合同和产品状态，移除内部源码定位、主机身份和运维取证细节。开发示例使用独立仓库路径。
+- 内部迁移来源与文件哈希记录保持本地忽略；公开源码、构建、平台批准和安装验收继续分别记录。
+- 共享工具与样例使用本仓库现有命令；修正旧工具和样例路径，并明确仓库外 tarball 安装及真实 Host 安装须单独验证。文档先发布时，尚未公开的源码引用显示为路径文字。
 
 ## 2026-10-03 · 开放平台中英文入口
 
@@ -36,11 +38,11 @@
 
 ## 2026-10-02 · 独立插件仓库本地迁移
 
-- 官方插件、共享开发工具和开发文档迁入独立仓库：`plugins/`、`packages/`、`docs/`、`website/`。修正文档命令和链接路径，保留原 Host 规范与历史引用；没有改变能力、授权或分发合同。本次源码与站点尚未获准公开推送。
+- 官方插件、共享开发工具和开发文档迁入独立仓库：`plugins/`、`packages/`、`docs/`、`website/`。修正文档命令和链接路径，保留原 Host 规范与历史引用；没有改变能力、授权或分发合同。公开源码不代表插件审核、签名或上架已完成。
 
 ## 2026-10-02 · 送审预检切换已部署 Agent 功能合同
 
-- 两端部署 `8233c429`、健康检查和真实 rc3 包解析确认后，默认合同升级至 `1.1@005a0f63-agent-features`；仅增加 `contributes.agentFeatures`，metadata i18n v2、能力及 probe 边界不变。
+- 送审工具的默认合同升级至 `1.1@005a0f63-agent-features`；仅增加 `contributes.agentFeatures`，metadata i18n v2、能力及 probe 边界不变。
 - 在途选项退役；旧 `1.1@31cf8889` 保留为显式 `legacy-31cf8889`，历史回执不冒充当前部署验证。身份、源码审核和最终包摘要校验保持严格。见[送审规范](plugin-submission-v1.md)。
 
 ## 2026-10-02 · 送审预检区分服务器字段基线与新版 Host Schema
@@ -78,7 +80,7 @@
 - 校准[接口参考的 reportStage / ACK 合同](plugin-api-reference-v1.md)：记录可选 `processing` 与最多 200 字符的 `label`、写入失败等待取回窗口可见后 ACK 的候选行为，示例先等待呈现成功再确认；保留处理中 60 秒无推进安全帽与其他失败规则。
 - 明确旧 1.23 SDK 丢弃 `label`、旧 Host 对 `processing` 返回 false，以及旧失败计时与呈现回执的差异。Host API 仍为 1.23，本次仅修正文档，不提高安装门槛，不宣称旧 Driver 具备新反馈；源码候选不代表已发布或完成真机验收。
 
-## 2026-09-30 · Host 行为：插件 Agent 配置页、固定入口与技能目录（PR 3–5/5）
+## 2026-09-30 · Host 行为：插件 Agent 配置页、固定入口与技能目录
 
 - **设置二级页**：Host 新增「设置 › Agent 引擎 › 插件 Agent 配置」二级页（Host 命令 `agent_config_*`，host-only）。清单 = 已装 × 启用 × 声明 `agent.session@2` × 当前账号有效审批（每次重验签名），排除 pi-agent/dsh-agent 管理面。模型区首期只放 auto | text-default（合同未扩容前不出现假档位）；运行时四卡与插件侧 `backends()` 同源（含 `defaultBackendSource`）；提示词模板区呈现声明默认与参数槽（方案 B）；工具区 = 可调基集勾选（人话在前/工具 ID 等宽次行，勾选 ≠ 授权）；保存写前按同一口径复验。运行时锁定/技能超限如实只读或标注。
 - **插件固定入口**：system task `agent-config` 落点接线——可信来源 appId 只取 live Bridge mount（无可信来源/来源停用即失败，不降级打开泛化设置页）；页面进入锁定模式（锁定标签、不可切换插件），来源插件停用/卸载即解除；返回上下文走既有 `system-task.return`。官方 Voice 设置页新增直达行（本地源码级；**送审滚锁不在本次范围**，生效需后续正常上架流程）。
@@ -86,7 +88,7 @@
 - 稳定错误码新增：`AGENT_SKILL_DIR_{UNREADABLE,NOT_DIR,SYMLINK,TOO_LARGE}` / `AGENT_SKILL_NOT_FOUND` / `AGENT_SKILL_OVER_LIMIT`（已入 Voice 错误码登记表）。
 - Host API 版本号不变（1.23 合同内落地）；源码合并不代表客户端已发布或真机验收完成。
 
-## 2026-09-30 · Host 行为：插件 Agent 配置覆盖层生效核心（PR 2/5）
+## 2026-09-30 · Host 行为：插件 Agent 配置覆盖层生效核心
 
 - **覆盖层存储**：账号目录新增 `agent-plugin-config-v1.json`（`app_id → {runtime?, features: {feature_id → {promptTemplate?, tools?}}}`，原子写、版本锁 v1）。坏文件 fail-closed：需要它的 v2 会话创建以 `AGENT_PLUGIN_CONFIG_CORRUPT` 报错（显式 runtime 不受影响，与全局偏好损坏同纪律），不静默回默认——防止用户关闭的工具/改过的模板被悄悄复原；损坏由配置页保存整文件重建修复。只对 `agent.session@2` 生效，v1 会话不读覆盖层。卸载即清账（重装不继承）。
 - **`AgentConfig.featureParams`**（随 featureRef 出现/降级）：featureRef 模板的参数值。带参数时 Host 核验 `systemPrompt` 与「manifest 声明模板 + 参数」渲染结果**逐字节一致**，不一致以 `AGENT_FEATURE_PROMPT_DRIFT` 拒绝（单一事实源被强制执行）；用户覆盖模板时用同一份参数渲染（方案 B 完整落地）。参数缺失/越界为稳定错误（`AGENT_FEATURE_PARAM_MISSING` / bad_params）。
@@ -140,7 +142,7 @@
 
 - 插件设计规范新增 [§3.6](plugin-design-system-v1.md#action-feedback)，Host 与插件界面通用。凡是点下去要等网络、磁盘、Host 调用或其他进程的一次性操作：点击后 100ms 内按钮必须变样（进行时文案 + 禁用，实现上就是在第一个 `await` 之前改状态）；超过 1 秒在触发按钮下方显示真实进度，拿不到字节或条目计数时显示「当前阶段 + 已用时间 + 不确定进度条」，不许编百分比或按时间伪造进度；进行中禁止重复触发（禁用之外处理函数再挡一次）；完成与失败都有明确终态，失败按 [§6.0](plugin-design-system-v1.md#waiting-failure-minimum) 给原因、错误码、版本、可复制诊断和「重试」且不自动消失。附正反代码示例与不确定进度条样式（含减少动态效果）；§3.4 进行中一句、§6 加载态「超过 400ms 才显示」的适用边界同步说明；交付前自检加一条。
 - [插件开发规范 §3.4](plugin-development-v1.md) 新增对应的交付门槛：第一次 `ctx.*` Bridge 调用之前按钮就要变样。
-- Host 参照实现：`driver-v2/src/components/ActionProgress.vue`，用于通知里的浏览器插件安装、商店与已安装页的获取 / 下载 / 更新、内置插件「查看并更新」和运行组件修复的准备阶段。本条不改 Manifest、SDK、Host API 或 Token 注入合同。
+- 插件安装、获取、下载、更新和修复的准备阶段使用统一进度反馈。本条不改 Manifest、SDK、Host API 或 Token 注入合同。
 
 ## 2026-09-27 · Host API / SDK 1.22（同版本并入）：Voice 取回卡与结果面板带错误码、版本与复制诊断
 
@@ -178,7 +180,7 @@
 
 ## 2026-09-27 · 上架预检默认改按线上新合同 1.1@31cf8889
 
-- 开放平台后端（服务项目 PR #1496）已上线：Manifest 合同基线升到 `1.1@31cf8889`，`requirements[].probe.id` 新增 `codex-app-server-v2` / `pi-agent-v2` / `dsh-native-v2`，审核员可批准能力目录扩到 25 项（新增 `agent.session@2` / `surface.clipboard@1` / `local.terminal.exec@1`）；i18n 目标枚举不变。
+- 开放平台后端已上线：Manifest 合同基线升到 `1.1@31cf8889`，`requirements[].probe.id` 新增 `codex-app-server-v2` / `pi-agent-v2` / `dsh-native-v2`，审核员可批准能力目录扩到 25 项（新增 `agent.session@2` / `surface.clipboard@1` / `local.terminal.exec@1`）；i18n 目标枚举不变。
 - `scripts/plugin-submission.ts` 的默认合同 `current` 改为这份线上合同，回执为 `local-preflight-passed`。旧基线 `1.1@c3475cb` 删除（已无节点执行，新合同只增不减）；`--server-contract native-v2-pending` 退役，传入即报错并提示去掉开关。开关机制保留，留给下一次后端在途合同。
 - 本条只改本地提交工具与规范，不改任何插件的 Manifest、版本或能力批准记录。
 
@@ -242,8 +244,8 @@
 - `workspace` 新增 `{ kind: "direct", path }`：只接受本插件经 `system.folder-pick@1` 授权的目录，直接读写原目录不经镜像；`app-private` 申请文件 / 命令工具时由 Host 分配独立工作根（不是整个数据目录）。`mounted` 镜像语义不变，旧会话不自动转换。
 - 六个文件工具在三种工作区都可授予（catalog 标签泛化为 `workspace-read` / `workspace-write`）；新增 `command`（`/bin/sh -c`，仅 direct / app-private + yolo，macOS Seatbelt 限定只能读写工作范围与本次临时目录），与 `run` 一样要求 `local.terminal.exec@1` 双层授权；镜像会话不放行 `command`。会话工具上限 16 → 32；DSH 模型声明含 8 个固定内部工具，总量上限 40。
 - 范围外访问先生成 Host 单次确认：许可绑定插件 / 账号代际 / 会话 / 回合 / 工具调用 id / 完整动作摘要，单次消费，120 秒超时；拒绝、关闭弹窗、过期、取消、撤权都不授予访问。插件只有只读 `agent.session.approvals.list` / `agent.v2.session.approvals.list` 与 `approval.requested` / `approval.resolved` 事件，**没有批准方法**。
-- 原地换号时范围执行服务单向退役；审批 IPC 与通知固定当前容器，阻塞文件/命令线程持同代授权租约至真实完成，旧账号任务不能进入新账号执行账本。
-- 安全复核：租约固定工作根 dev/inode，替换目录不提升授权；结构化读取经同一 FD 校验单链接，写入采用原子替换；缩小系统依赖只读前缀。完整命令只留 Host 待审批内存，插件列表与审批事件账本的 `description` 使用 `workspace_access`。`grep` 对超限/拒绝读取的文件明确返回 `truncated: true`。
+- 切换账号后，旧账号的任务不能进入新账号的执行记录。文件与命令操作须满足当前账号的工作区授权。
+- 插件只能在获准的工作区范围内读写文件和执行命令。超限或拒绝读取时，`grep` 明确返回 `truncated: true`。
 - 明确路径沙箱的外部进程边界：命令自身及后代不能创建硬链接；已有范围内外文件权限的非沙箱同 UID 进程若在运行期主动注入硬链接，命令仍可能经范围内名字读写该 inode。direct / app-private 均不承诺抵御这种外部原生进程篡改，启动前扫描不等于持续隔离。
 - `backends()` 的 `capabilities.scopedExecutionVersion: 1` 与 `commandExecution` 表示当前平台实现；字段缺席不能视为支持。`createSession` 返回 `workspace` / `workspaceRoot` / `scopeVersion`。新增稳定错误 `AGENT_SCOPE_STALE`、`AGENT_SCOPE_LIMIT`、`AGENT_SCOPE_PLATFORM_UNSUPPORTED`。
 - 命令结束时其进程组与观察到的全部后代（含主动 setsid 脱离、凭进程组找回的）都会被停止；Host 异常退出后下次启动按 pid + 启动时刻清理残留。为避免误杀无关进程，组扩展前后必须有完整身份匹配的已跟踪成员，失去锚点即停止追索。边界：中间进程即使曾被观察到，若退出时孙进程未入账且组内无已知成员，孙进程仍可能残留。常驻服务池（用户同意后转入、独立页面管理）尚未实现。
@@ -327,7 +329,7 @@
 ## 2026-09-18 · 提交身份 publisherId 官方保留形态实读澄清
 
 - `plugin-submission-v1` 身份表「发布者 / Team ID」行澄清：Manifest `publisherId` 必须与产品后台 Publisher 精确一致——Team UUID，或平台保留官方身份 `reai`（2026-09-17 Terminal 产品卡片实读：服务端以同一 `product.publisher_id` 做 freeze 比对并注记 `official_reserved`）；非保留产品不得写成 `reai`，新团队也不得保留示例值。
-- 随 Terminal 1.0.3 送审实践验证（submission 3e1c0fba）：保留身份产品用 `reai`，团队产品用 Team UUID。
+- 提交身份规则：保留身份产品使用 `reai`，团队产品使用 Team UUID。
 ## 2026-09-18 · Codex backend 档位统一接入 + Codex Link cwd 授权闸（Agent 统一化 M3 第三批）
 
 - Codex session backend 接入 Spec.mode：chat/plan = read-only sandbox + 文件工具白名单（三路同判），yolo 收敛为 workspace-write 且 cwd 指向镜像 worktree（镜像内自由写 + 按档位写回，不再 dangerFullAccess 直写）；owned-tasks 的 untrusted 逐项确认形态保留不回退。
@@ -389,9 +391,9 @@
 ## 2026-09-14 · 插件提交身份与最终包预检
 
 - 新增上架打包与提交规范：区分插件 App ID、OAuth Client ID、Team publisherId 和 Product ID；明确 `universal` 属于提交 artifact，Manifest 保留平台/架构 targets。
-- 新增仓库 `plugin-submit` Skill 与 `scripts/plugin-submission.ts`，核对源与包内身份、版本、PNG 图标、语言资源、文件摘要及两次构建一致性，生成含产品关联的提交记录。
+- 新增 `scripts/plugin-submission.ts`，核对源与包内身份、版本、PNG 图标、语言资源、文件摘要及两次构建一致性，生成含产品关联的提交记录。
 - 提交配置显式记录版本，新增 `--form-version` 拦截表单 `1.0.0` / 包 `0.2.0` 不一致；交付说明提供可复制填写值，回归测试纳入 PR CI。没有实际表单值时不宣称已核对远程草稿。
-- 经 `ask-project` 只读确认服务项目审核合同，补齐版本占用、图片与 Host 图标区别、CAS、路由记录 ID、报价/幂等/错误恢复及人工能力审核，记录源码 HEAD 与行号，区分源码事实和线上状态。
+- 补齐版本占用、图片与 Host 图标区别、文件归属、路由记录 ID、报价、幂等恢复及人工能力审核；源码合同与线上状态分别核对。
 - 打包交付、上传、付费提交、审核和公开上架分别记录；复用已有产品和草稿，避免同一个坏包反复提交。
 
 ## 2026-09-14 · Voice 结果写回错误分类

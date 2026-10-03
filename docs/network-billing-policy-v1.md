@@ -9,12 +9,12 @@
 
 > ⚠️ **这是规范，不是完整实现清单。** 当前 Host 已实现 Web Surface 的 Network Broker 子集，
 > 发行档位仍是 `official-only`，公开 Marketplace、凭据、计费和复合 Runtime 尚未完成。
-> 每一处有意的偏差、以及开放第三方前必须补齐的安全清单，见 [README.md](README.md)。
+> 当前实现范围与第三方分发边界，见 [README.md](README.md)。
 > 机器可读事实源：`packages/contract/host-support-matrix.json`（能力与限额）、`packages/contract/schemas/app-manifest-1.1.schema.json`（结构）。
 
 > 🔄 **2026-08-14 云用量归因更新**：插件调用外脑云能力的归因模型已重新拍板，本文涉及云端消耗
 > 归因的旧表述一律以
-> `docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`（原 Board 仓库内 `docs/archive/plans/2026-08-14-plugin-oauth-parent-child-architecture.md`；未迁入）
+> [云能力与权限分层基线](wainao-cloud-workflow-distribution-v1.md)
 > 为准（规则本身不在此复述，以免产生第二事实源）；Billing Broker（App 内购买 / 权益）条款不受影响。
 
 

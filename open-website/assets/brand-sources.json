@@ -11,16 +11,15 @@
     {
       "file": "reai-logo.svg",
       "candidate": 1,
-      "source": "/Users/kongkang/Developer/wainao_editor/apps/frontend/src/components/Logo.vue",
-      "colorsSource": "/Users/kongkang/Developer/wainao_editor/apps/frontend/src/components/SiteHeader.vue:68",
-      "extraction": "Original component resolved to existing header colors, eyes open, no blush; geometry unchanged.",
+      "source": "ReAI approved brand asset",
+      "extraction": "Original geometry and colors preserved.",
       "sha256": "44c5c723058863e84c512589b735b3b4b373ee2350b48bb1f963738cc7abaee5"
     },
     {
       "file": "reai-app-icon.svg",
       "candidate": 3,
-      "source": "/Users/kongkang/Developer/ai-vibe-board/driver-v2/src-tauri/icons/icon-source.svg",
-      "extraction": "Exact SVG file from read-only target Codex response.",
+      "source": "ReAI approved brand asset",
+      "extraction": "Original geometry and colors preserved.",
       "sha256": "0cb30f1e9c9ec7ea8acb3e112c5a429b559d443b2be6e6da0bd839e6f34ebd6a"
     }
   ]

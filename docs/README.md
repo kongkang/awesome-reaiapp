@@ -1,6 +1,6 @@
 # App 平台合同 v1.1 · 首版实现范围
 
-> 本地独立仓库迁移：来源 ReAI-com/ai-vibe-board `b139bf5b82b9007233adc9f05eea88f89014fb5f`。这里保留原平台规范与其当前/规划边界；迁入包路径改为 `packages/`，官方插件改为 `plugins/`。未迁入的 Host 实现引用已明确标注；本地复制不代表许可、公开范围、能力审核或发布获批。
+> 本仓库提供独立插件开发文档、共享工具和官方插件源码。公开源码、平台审核、签名、上架与 Host 安装是不同状态；能力支持范围以当前工具链合同和实际 Host 版本为准。
 
 
 这一目录是**规范**。规范描述的是平台最终要长成的样子；首版 Host 只实现其中一个子集。
@@ -30,7 +30,7 @@
 | [规范更新日志](CHANGELOG.md) | 所有影响插件设计、开发、接口、发行或运行边界的变化；每次规范更新必须在同一提交或 PR 追加记录 |
 | [ReAI App 开发指南 v1.1](app-development-guide-v1.md) | 平台完整目标合同与设计背景；包含尚未实现的能力，不能代替当前接口参考 |
 | [Driver V2 × 外脑云能力与工作流分发基线](wainao-cloud-workflow-distribution-v1.md) | 云端 Team/Project、工作流快照、计费、审核和升级产品基线 |
-| Driver V2 版本兼容与平台升级交互规范（原 Board 仓库内 `docs/driver-v2-version-and-platform-upgrade.md`；未迁入） | 1.0.0 产品版本、统一固件线，以及插件进入设置、完成系统升级并返回来源插件的职责边界 |
+| [Host 系统任务](plugin-api-reference-v1.md#host-系统任务) | 版本状态、升级入口和返回来源插件的职责边界 |
 
 `website/` 构建会检查本目录的规范文件和已跟踪 HTML 导出；发现变更但 `CHANGELOG.md` 未同步时
 直接失败，避免线上规范无记录漂移。
@@ -40,14 +40,11 @@
 
 | 事实源 | 回答的问题 |
 |---|---|
-| `host-support-matrix.json`（仓库内 `packages/contract/host-support-matrix.json`；源码未纳入本站提交） | 首版放行哪些能力与权限、平台全局限额是多少、稳定错误码有哪些 |
-| `app-manifest-1.1.schema.json`（仓库内 `packages/contract/schemas/app-manifest-1.1.schema.json`；源码未纳入本站提交） | Manifest 的结构契约（`additionalProperties: false`） |
-| `manifest-fixtures/`（原 Board 仓库内 `platform/contract/manifest-fixtures`；未迁入） | 正反样例。Host 与 CLI 跑同一批，结论必须一致 |
+| `host-support-matrix.json`（仓库路径 `packages/contract/host-support-matrix.json`） | 首版放行哪些能力与权限、平台全局限额是多少、稳定错误码有哪些 |
+| `app-manifest-1.1.schema.json`（仓库路径 `packages/contract/schemas/app-manifest-1.1.schema.json`） | Manifest 的结构契约（`additionalProperties: false`） |
+| `manifest-fixtures/`（仓库路径 `packages/contract/manifest-fixtures/`） | Manifest 正反样例，用于合同验证 |
 
-> 已知例外（待收编进矩阵）：通知的 80/500 字符与 5 次/10 秒限流在
-> `driver-v2/src-tauri/src/notifications.rs` 常量 + 行为测试；network endpoint 的条数上限
-> （32 端点/16 origin/32 路径前缀）在 schema 与双侧 validator。在矩阵里找不到这几个
-> 数字属正常，以上述位置为准。
+> 通知与网络的具体限额见[接口参考](plugin-api-reference-v1.md)和[网络与计费策略](network-billing-policy-v1.md)。支持矩阵与接口文档须共同核对。
 
 ---
 
@@ -61,11 +58,7 @@
 - 本地导入不等于上架、公开分发或获得云能力，插件仍受 Manifest、Bridge、权限和资源门禁；
 - 开发者通道运行的是不可信代码，现有独立 WebView/origin 是隔离边界，但不是完整安全沙箱。
 
-这条决策是有代价地做出的。此前十轮技术审查逐条查证过：在当前的 Tauri / wry 版本上，
-为不可信第三方代码构建完整安全沙箱**是安全研究级课题**，不是一个开发周期能收敛的工程任务
-（媒体捕获无条件放行、剪贴板没有拦截点、文件选择框关不掉、拖放会写入应用全局授权作用域、
-WebRTC 不受 CSP 网络指令覆盖……）。所以 Developer Mode 是开发者自担风险的本机调试入口，
-不能包装成经过平台安全审核的分发渠道。
+Developer Mode 用于作者本机调试。它不提供任意第三方代码的完整安全隔离，也不代表平台审核或公开分发批准。开发者只应导入自己信任的代码。
 
 ### 但架构边界照做
 
@@ -228,37 +221,10 @@ JS API 或系统授权接口交给插件。系统通知授权由 Host 持有：A
 
 ---
 
-## 开放第三方插件前必须补齐
+## 第三方分发边界
 
-下列条目来自持续安全审查，全部**已查证成立**（都在锁定版本的源码里）。
-开放任意第三方代码之前，每一条都必须有结论。这不是待办清单，是准入门槛。
+当前生产 Catalog 为 `official-only`。未经审核的包不能通过公开 Catalog 分发。
 
-1. **媒体捕获**：wry 在 macOS 对 `requestMediaCapturePermission` 无条件放行。需要自定义
-   `WKUIDelegate` 拒绝 + 一道屏障保证「装门早于插件执行」+ 强持有 delegate（框架侧是弱引用）。
-   该 API 仅 macOS 12+。
-2. **文件面板**：`runOpenPanelWithParameters` 无条件打开系统选择框，需同样拦截。
-3. **剪贴板**：macOS 剪贴板始终启用且没有 clipboard hook；用户主动粘贴无法阻断——
-   只能阻断无用户动作的异步剪贴板 API，其余必须如实披露，不能假装拦住了。
-4. **拖放**：默认处理器把绝对路径发给 WebView 并调用**应用全局**的文件授权，必须关掉它。
-5. **WebRTC / ICE**：不受 `connect-src` 覆盖（CSP L3 的 `webrtc` 是独立指令），需实测。
-6. **消息通道全局队列**：大消息进应用全局队列且取的时候不校验来源；Windows 上普通 JSON
-   响应也会走这条路。需要 vendored patch 让队列绑定到具体 WebView。
-7. **Windows origin**：custom scheme 被映射为固定 host，所有插件同 origin。
-   需要多 scheme 槽位或独立端口方案。
-8. **销毁确认**：WebView 关闭没有 destroyed 事件，Windows 侧的 `Close()` 也没有完成回调。
-   需要 dealloc 哨兵或窗口消息协议。
-9. **资源隔离**：没有独立渲染进程，死循环与内存炸弹会波及同进程其他 Surface。
-   只能做聚合观测 + 一键停用。
-10. **顶层导航与外链**：需要白名单化 + broker 协议（Host 预发一次性凭据、同步阻止默认行为、
-    凭据不进外部 URL）。
-11. **`developer_local` 合同**：Developer Mode 显式开启 + 四处未审核提示 + 一键停用全部 +
-    同 `appId` 冲突处理。
-12. **隔离与故障恢复**：安全隔离记录、日志事务、崩溃标记绑定不可信代码执行、安全模式、
-    原生级停用开关。
-13. **数据接管防伪**：所有权集合（来源 + appId + 数据代次），只允许精确摘要继承，
-    且需用户显式选择。
-14. **批准的 OS / WebKit 矩阵**与运行时门禁。
-15. **诊断日志容量**：Host 已做单条截断和每秒限流，但尚未定义磁盘总量、保留期与按插件
-    配额；公开第三方分发前必须补齐，不能把 JS 侧限流当安全边界。
-16. **Action recording 与通用 Intent Schema**：`recording` 当前只有识别合同，没有公开生产者与
-    用户权限；非空 Intent Schema 需补跨 Host/SDK 的生成式与模糊测试后才能作为公开稳定合同。
+Developer Mode 是本机调试入口，不是公开分发渠道。平台批准、用户权限同意、正式安装和真实 Host 验收需要分别完成。
+
+未来第三方开放范围以正式平台合同为准；文档中的目标能力不能作为现有安装权限。

@@ -1,6 +1,6 @@
 # ReAI Board 插件设计规范 v1
 
-> **配套示例页**：<https://ai-board.reai.com/design/plugin-v1/> —— 本文每一档都在那里
+> **配套示例源码**：本仓库的 `docs/plugin-design-system-v1.html`。本文每一档都在那里
 > 真实画了出来，可切明暗主题、抽屉能真的开关。做插件时对着看，比读数字准得多。
 > （在仓库里读这份文档的话，同目录下的 `plugin-design-system-v1.html`
 > 用浏览器直接打开就是同一个页面。）
@@ -75,7 +75,7 @@ Host 侧新写的界面向本文靠拢**，存量随手改到的顺带收敛。
 
 ### 1.2 有哪些 Token
 
-**事实源是 主题 Token 表（原 Board 仓库内 `driver-v2/src-tauri/src/theme/tokens.rs`；未迁入）**，
+**使用 Host 提供的主题 Token 和本节的 Token 表**，
 拿不准某个名字存不存在时以它为准。那份表是从设计稿的 CSS 自动生成的（文件头写着「请勿手改」），
 明暗两套值一并列出，Host 与本文档共用同一份，不存在「文档说有、Host 说没有」。
 
@@ -167,7 +167,7 @@ Voice 命令回复曾使用 `--text` / `--text-2` / `--surface` / `--border`，�
 > （标题栏动作是例外，那条路已经能按名字用 Host 图标，见 §2.5。）
 
 做法是在插件页面里内嵌一份 SVG 精灵图，把用到的图标一次性定义好，之后处处 `<use>` 引用。
-图标从 Host 图标表（原 Board 仓库内 `driver-v2/src/shell/icons.ts`；未迁入）里照抄 path——共 49 个，lucide 描边风格，
+图标使用 Host 支持的图标名称或插件自带的 Lucide 风格路径，
 **只抄用得到的那几个**：
 
 ```html
@@ -542,8 +542,7 @@ installButton.addEventListener("click", async () => {
 不确定进度不设，阶段文字放在
 `aria-live="polite"` 的区域里，失败主句用 `role="alert"`。
 
-Host 的参照实现是 `driver-v2/src/components/ActionProgress.vue`（通知面板里的浏览器插件安装、
-商店与已安装页的获取 / 更新、内置插件「查看并更新」共用）。
+插件安装、获取、更新与修复的进度反馈遵循同一套规则。插件自己的任务也应保留真实阶段、耗时和失败原因。
 
 **判据**：点一下立刻松手，盯着按钮看——100ms 内它变没变？再把网络调慢：超过 1 秒时能不能说出
 「现在在做哪一步、等了多久」？最后断网让它失败：原因、错误码、版本和「重试」都在按钮旁边吗？
@@ -812,9 +811,7 @@ function describeError(error: unknown): string {
 }
 ```
 
-Host 的参照实现是内核门禁页（`driver-v2/src/components/AppLifecycleRecovery.vue`
-与 `src/first-install/KernelDiagnostics.vue`），规则来源见
-内核门禁规范（原 Board 仓库内 `docs/driver-v2-kernel-startup-gate.md#等待与失败的信息硬约束2026-09-27`；未迁入）。
+插件与 Host 页面的等待、失败和诊断呈现均遵循本节要求。
 
 ---
 
@@ -823,7 +820,7 @@ Host 的参照实现是内核门禁页（`driver-v2/src/components/AppLifecycleR
 本节是插件设置页的布局合同，适用于普通设置行、分段选择及条件反馈。
 实现注释应引用稳定地址：
 `https://ai-board.reai.com/docs/plugin-design-system-v1#settings-content-layout`。
-[可运行示例](https://ai-board.reai.com/design/plugin-v1/#settings-content-layout)展示三档选择及异常反馈。
+本仓库的 `docs/plugin-design-system-v1.html` 示例展示三档选择及异常反馈。
 
 ### 标题与辅助说明（title + description）
 
@@ -961,8 +958,6 @@ divider 用于区分信息层级，不能直接借通用行的通栏 `border-bot
 | 标题栏动作按名字用 Host 图标（§2.5） | ✅ 已实现（`titlebar.action@1`，Host API 1.2.0） |
 | Host 渲染根路径、二级页返回与可点击面包屑（§4.5） | ⏳ 统一设计已定；公开子路由 / 路径贡献合同尚未实现，插件不得自行注入 Title Bar |
 | 往插件页面注入公共图标精灵图（§2.5） | ⏳ 未实现。页面内图标先按 §2.1 自带，尺寸线宽照 §2.2，将来只删不改 |
-| 示例页部署到 `ai-board.reai.com/design/plugin-v1/` | ✅ 已上线。独立 docroot、零构建、单独同步（与 `/dfu/` 同模式），带 noindex 不对外导流 |
+| 插件设计示例源码 | 本仓库提供 `docs/plugin-design-system-v1.html`，可用于本地阅读和交互预览 |
 
-⚠️ 示例页是**独立 HTML，不进开发者文档站的 Markdown 管线**——文档站只同步 `.md`。
-所以本文引用它一律用完整外链，不要改成仓库相对路径：相对链接会在文档站构建时被
-改写规则吃掉，正文里留下半截话。
+示例页是独立 HTML。文档站从 Markdown 生成规范页面；本地预览示例不代表插件通过 Host 安装验收。

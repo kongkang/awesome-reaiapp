@@ -9,13 +9,18 @@ description: English reading guide to the ReAI specification changelog specifica
 
 ## Keep specification changes traceable
 
-- Changes to the source specifications must be recorded in docs/CHANGELOG.md in the same change or review. The documentation build checks this requirement.
+- Record source specification changes in docs/CHANGELOG.md in the same change or review. The documentation build checks this requirement.
 
-- Platform specification history and individual plugin release notes are maintained separately.
+- Maintain platform specification history and individual plugin release notes separately.
 
-- A source entry describes documentation or implementation changes; it does not by itself prove deployment, public release, or Host installation.
+- A source entry describes documentation or implementation changes. It does not by itself prove deployment, public release, or Host installation.
 
-- The complete historical log is maintained in Chinese and remains available through the source link below.
+- The Chinese historical log remains available through the source link below.
+
+## Public documentation review
+
+The public documentation keeps API contracts, permission requirements, limits, compatibility rules, and candidate status.
+Private audit records, local paths, operational details, and unpublished security findings remain outside the repository.
 
 ## Continue reading
 
