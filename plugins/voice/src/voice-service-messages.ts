@@ -33,6 +33,7 @@ export function voiceServiceMessage(locale: UiLocale, code: string): string {
     return resources.app.nothingWasHeardPleaseSayItAgain;
   }
   if (code === "CLOUD_MODEL_SELECTION_REQUIRED") return resources.view.cloudModelsUnavailable;
+  if (code === "com.reai.voice/CLOUD_MODEL_SELECTION_REQUIRED") return resources.app.chooseCloudModelBeforeTranscribing;
   const service = resources.service;
   const key = CODE_KEYS[code];
   return key ? service[key] : service.providerFailed;

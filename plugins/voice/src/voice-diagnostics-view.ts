@@ -51,6 +51,7 @@ export function sweepVoiceDiagnostics(store: VoiceDiagnosticsStore): void {
 }
 
 export interface VoiceDiagnosticsBlockOptions {
+  developerMode?: boolean;
   key: string;
   entry: VoiceDiagnosticEntry;
   host(): VoiceHostVersion | undefined;
@@ -80,6 +81,15 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, 
 
 export function voiceDiagnosticsBlock(options: VoiceDiagnosticsBlockOptions): HTMLElement {
   const { key, entry, store } = options;
+  if (options.developerMode !== true) {
+    const progress = node("div", "voice-progress");
+    // 普通模式保留真实等待步骤与用时；失败主句和恢复动作由业务区提供。
+    if (entry.state === "waiting") {
+      progress.append(node("span", "voice-progress-step", entry.step));
+      if (entry.sinceMs !== undefined) progress.append(elapsedNode(entry));
+    }
+    return progress;
+  }
   store.seen.add(key);
   const box = node("div", `voice-diag${options.className ? ` ${options.className}` : ""}`);
   box.dataset.diagKey = key;

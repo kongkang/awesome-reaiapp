@@ -60,7 +60,8 @@ export function createVoiceAgentTurns(agent: VoiceAgentTurnClient, deliver: (tas
       const journalId = options.recovery?.taskId ?? taskId;
       const active: Active = { taskId, journalId, journal: options.remember || options.recovery ? journal : undefined, cancelled: options.recovery?.cancelled ?? false, cancelSent: false, replaying: true, pending: [], seen: new Set(), sequence: 0 };
       requests.set(requestKey, active);
-      let request = { sessionId: options.sessionId, idempotencyKey: taskId, text: options.text,
+      let request: import("@reai/app-sdk/v1").AgentTurnStart = { sessionId: options.sessionId, idempotencyKey: taskId, text: options.text,
+        ...(options.attachmentInput ? { attachmentInput: structuredClone(options.attachmentInput) } : {}),
         ...(options.taskPresentation ? { taskPresentation: options.taskPresentation } : {}) };
       let accepted = false;
       let admissionAttempted = false;

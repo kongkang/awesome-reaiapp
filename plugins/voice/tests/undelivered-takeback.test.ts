@@ -80,8 +80,9 @@ test("focus_changed：请求弹出「取回文字」卡片，本地化文案 + �
     await until(() => takebackRequests(host).length === 1, "写回失败必须请求弹出「取回文字」卡片");
     const params = takebackRequests(host)[0]!.params as { title: string; reason: string; text: string };
     expect(params.title).toBe("文字没有写入成功");
-    // §6.0：取回卡原因带上真实失败码（只有码，不带原文）。
-    expect(params.reason).toBe("无法写入目标输入位置（focus_changed）");
+    // 普通文案只带可读原因；技术码使用独立字段。
+    expect(params.reason).toBe("无法写入目标输入位置");
+    expect((params as { errorCode?: string }).errorCode).toBe("focus_changed");
     expect(params.text).toBe("测试云端转写");
     // 页内不再渲染兜底浮层（那是被替换掉的旧形态）。
     expect(surface.root!.querySelector(".undelivered-text-panel")).toBeNull();

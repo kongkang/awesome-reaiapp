@@ -148,7 +148,7 @@ test("翻译本身失败：不写原文，取回卡标题「翻译失败」、�
     const [card] = h.takebacks();
     expect(card!.title).toBe("翻译失败");
     expect(card!.text).toBe("测试语音命令");
-    expect(card!.reason).toBe("暂时无法完成翻译。你的内容已保存，请稍后重试。（AGENT_ENGINE）");
+    expect(card!.reason).toBe("暂时无法完成翻译。你的内容已保存，请稍后重试。");
     await settle();
     expect(h.commits()).toHaveLength(0);
     expect(h.answers()).toHaveLength(0);
@@ -197,7 +197,7 @@ test("翻译结果是聊天回复（VM 实测原样）：不写入，弹「翻�
     const [card] = h.takebacks();
     expect(card!.title).toBe("翻译失败");
     expect(card!.text).toBe("测试语音命令");
-    expect(card!.reason).toBe("翻译服务回了一段对话，而不是译文，所以没有写入。你的内容已保存，请重试。（TRANSLATION_CHAT_REPLY）");
+    expect(card!.reason).toBe("翻译服务回了一段对话，而不是译文，所以没有写入。你的内容已保存，请重试。");
     expect(card!.errorCode).toBe("TRANSLATION_CHAT_REPLY");
     await settle();
     expect(h.commits()).toHaveLength(0);
@@ -232,7 +232,7 @@ test("翻译写回失败：取回卡内容为译文，原因用新失败原因�
     expect(h.takebacks()[0]).toEqual({
       // 卡里是译文：标题标明「翻译好了」，且不得出现任何「已写入」类成功字样。
       title: "翻译好了，但没能写入",
-      reason: "目标应用没有接收文字（not_received）",
+      reason: "目标应用没有接收文字",
       text: "这是测试 Agent 回复",
       // Host API 1.22（#953）：结构化错误码另给一份；原始原因不传。
       errorCode: "not_received",
@@ -253,7 +253,7 @@ test("翻译成功但 Host 事前判断确定不可输入（not_editable）：�
     await until(() => h.takebacks().length === 1, "确定不可输入时弹一张取回卡");
     expect(h.takebacks()[0]).toEqual({
       title: "翻译好了，但没能写入",
-      reason: "光标不在可输入的位置（not_editable）",
+      reason: "光标不在可输入的位置",
       text: "这是测试 Agent 回复",
       errorCode: "not_editable",
     });
@@ -278,7 +278,7 @@ test("翻译成功但没有写入目标（no_input_target）：不调用写回�
     await until(() => h.takebacks().length === 1, "没有写入目标时弹一张取回卡");
     expect(h.takebacks()[0]).toEqual({
       title: "翻译好了，但没能写入",
-      reason: "没有可写入的位置（no_input_target）",
+      reason: "没有可写入的位置",
       text: "这是测试 Agent 回复",
       errorCode: "no_input_target",
     });
@@ -316,7 +316,7 @@ test("写回权限被拒（commit 与取回卡都被拒）：改弹失败结果�
       { label: "翻译结果", text: "这是测试 Agent 回复" },
       { label: "错误", text: h.takebacks()[0]!.reason },
     ]);
-    expect(h.takebacks()[0]!.reason).toEndWith("（VOICE_DELIVER_PERMISSION_DENIED）");
+    expect(h.takebacks()[0]!.reason).not.toContain(h.takebacks()[0]!.errorCode!);
     expect(JSON.stringify(answer)).not.toContain("已写入");
   } finally { await h.dispose(); }
 });
@@ -329,7 +329,7 @@ test("写回抛出登记过的真实码：取回卡原因与 errorCode 保留原
     await until(() => h.takebacks().length === 1, "写回异常弹一张取回卡");
     const [card] = h.takebacks();
     expect(card!.errorCode).toBe("VOICE_DELIVER_INVALID_REQUEST");
-    expect(card!.reason).toEndWith("（VOICE_DELIVER_INVALID_REQUEST）");
+    expect(card!.reason).not.toContain(card!.errorCode!);
     expect(card!.reason).not.toContain("insert_failed");
     await settle();
     expect(h.answers()).toHaveLength(0);
@@ -428,7 +428,7 @@ test("翻译本身失败且取回卡被拒：改弹失败结果面板（内容�
     expect(answer).toMatchObject({ title: "翻译失败", status: "failed", text: "测试语音命令", errorCode: "AGENT_ENGINE" });
     expect(answer!.sections).toEqual([
       { label: "原文", text: "测试语音命令" },
-      { label: "错误", text: "暂时无法完成翻译。你的内容已保存，请稍后重试。（AGENT_ENGINE）" },
+      { label: "错误", text: "暂时无法完成翻译。你的内容已保存，请稍后重试。" },
     ]);
     expect(JSON.stringify(answer)).not.toContain("上游错误原文");
   } finally { await h.dispose(); }
@@ -517,7 +517,7 @@ for (const writeBack of ["committed", "not_received"] as const) {
       } else {
         expect(h.takebacks()).toEqual([{
           title: "翻译好了，但没能写入",
-          reason: "目标应用没有接收文字（not_received）",
+          reason: "目标应用没有接收文字",
           text: "这是测试 Agent 回复",
           errorCode: "not_received",
         }]);
@@ -689,7 +689,7 @@ test("转文本写回失败且取回卡被拒：改弹失败结果面板——�
       { label: "转文本结果", text: "测试语音命令。" },
       { label: "错误", text: h.takebacks()[0]!.reason },
     ]);
-    expect(h.takebacks()[0]!.reason).toEndWith("（VOICE_DELIVER_PERMISSION_DENIED）");
+    expect(h.takebacks()[0]!.reason).not.toContain(h.takebacks()[0]!.errorCode!);
     expect(JSON.stringify(answer)).not.toContain("已写入");
   } finally { await h.dispose(); }
 });
@@ -875,7 +875,7 @@ test("输入法写回失败（not_editable）：弹一张取回卡，历史详�
     const surface = await h.host.openSurface("main");
     await runCommand(h, "com.reai.voice.toggle-input");
     await until(() => h.takebacks().length === 1, "写回失败弹取回卡");
-    expect(h.takebacks()[0]).toEqual({ title: "文字没有写入成功", reason: "光标不在可输入的位置（not_editable）", text: "测试语音输入", errorCode: "not_editable" });
+    expect(h.takebacks()[0]).toEqual({ title: "文字没有写入成功", reason: "光标不在可输入的位置", text: "测试语音输入", errorCode: "not_editable" });
     await until(() => !!surface.root!.querySelector(".task-item"), "历史出现这一条");
     surface.root!.querySelector<HTMLButtonElement>(".task-item")!.click();
     const warnings = Array.from(surface.root!.querySelectorAll(".inline-warning"), node => node.textContent);
@@ -922,7 +922,7 @@ test("输入法写回权限被拒（commit 与取回卡都被拒）：改弹失�
     expect(h.takebacks()).toHaveLength(1);
     const [card] = h.takebacks();
     expect(card).toMatchObject({ title: "文字没有写入成功", text: "测试语音输入。", errorCode: "VOICE_DELIVER_PERMISSION_DENIED" });
-    expect(card!.reason).toEndWith("（VOICE_DELIVER_PERMISSION_DENIED）");
+    expect(card!.reason).not.toContain(card!.errorCode!);
     const [answer] = h.answers();
     expect(answer).toMatchObject({
       badge: "语音输入",

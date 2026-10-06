@@ -1,8 +1,9 @@
-/** Modern pack staging, using the immutable public deterministic ZIP writer. */
+/** Modern pack staging, retaining the immutable public STORE writer by default. */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { BUILD_MANIFEST_NAME, PackError, loadSupportMatrix, writeZip, type BuildManifestV1 } from "@reai/app-cli";
+import { BUILD_MANIFEST_NAME, PackError, loadSupportMatrix, type BuildManifestV1 } from "@reai/app-cli";
+import { parseCompression, writePackageZip, type Compression, type PackOptions } from "./archive";
 import { buildApp } from "./build";
 import { safeChild, assertSafeTree, isSafePackagePath } from "./paths";
 import { assertSourceReviewArchive, type SourceReviewEvidence } from "./source-review-evidence";
@@ -21,7 +22,7 @@ export interface PackFinding {
  * 单文件、解压总量、大小写/NFC 冲突键），改一侧必须同步另一侧。没有这道预检时，
  * 超限的包在 pack 阶段零警告、装进 Host 才报错——开发者会以为是 Host 坏了。
  *
- * 压缩比那道闸这里不用检查：pack 只写 store（不压缩），比值恒为 1。
+ * 压缩比在 ZIP writer 按实际压缩长度检查；超过 Host 门禁的单项保留 STORE。
  * Rust 侧遇到第一个violation即中止；这里把全部问题一次列完，便于一轮修完。
  */
 export function checkPackageEntries(entries: ZipEntry[], limits: MatrixLimits): PackFinding[] {
@@ -93,12 +94,18 @@ function throwIfViolated(findings: PackFinding[]): void {
   );
 }
 
-export async function createArchive(appDirectory: string, requireI18n: boolean, sourceReview?: SourceReviewEvidence) {
+export async function createArchive(appDirectory: string, requireI18n: boolean, sourceReview?: SourceReviewEvidence, options: PackOptions = {}) {
+  const compression = parseCompression(options.compression);
   const root = resolve(appDirectory);
   const built = await buildApp(root, requireI18n, sourceReview);
 
-  const buildManifest = built.buildManifest;
+  const result = archiveFromBuild(root, built.buildManifest, compression);
+  assertSourceReviewArchive(sourceReview, result.archive);
+  return result;
+}
 
+/** Internal archive assembly defaults to canonical STORE. It makes no approval decision. */
+export function archiveFromBuild(root: string, buildManifest: BuildManifestV1, compression: Compression = "store") {
   const entries = readVerifiedEntries(root, buildManifest);
 
   entries.push({
@@ -111,7 +118,7 @@ export async function createArchive(appDirectory: string, requireI18n: boolean, 
   const findings = checkPackageEntries(entries, limits);
 
   throwIfViolated(findings);
-  const archive = writeZip(entries);
+  const archive = writePackageZip(entries, compression, limits);
   if (archive.byteLength > limits.packageZipBytes) {
     findings.push({
       code: "PACKAGE_LIMIT_EXCEEDED",
@@ -121,7 +128,6 @@ export async function createArchive(appDirectory: string, requireI18n: boolean, 
   }
   throwIfViolated(findings);
 
-  assertSourceReviewArchive(sourceReview, archive);
   return {
     archive,
     archiveDigest: createHash("sha256").update(archive).digest("hex"),

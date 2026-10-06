@@ -40,6 +40,11 @@ export {
   type DeveloperScopeSummary,
   type DeveloperScopesListInput,
   type DeveloperTeamSummary,
+  type DeveloperTesterAddInput,
+  type DeveloperTesterEntry,
+  type DeveloperTesterRemoveInput,
+  type DeveloperTestersListInput,
+  type DeveloperTestersSummary,
 } from "./developer-platform";
 export {
   brokerFetch,
@@ -281,5 +286,7 @@ export {
 export type { AppGatewayClient, GatewayConnection, GatewayHandle } from "./services";
 
 export type { AgentConfig, AgentTurnStart, AgentTurnRef, AgentTurnSnapshot, AgentTurnResult, AgentToolAttempt, AgentServiceEvent, AgentServiceClient } from "./agent-service";
+export type { AgentAttachmentAdmission, AgentAttachmentSnapshot, AgentAttachmentTurnAdmission, AgentAttachmentTurnInput, AgentAttachmentPart, AgentAttachmentMode, AgentAttachmentReaders, AgentAttachmentUploadOwner, AgentAttachmentUploads } from "./agent-attachments";
 
 export type { AgentRunArguments, AgentRunOutput } from "./agent-run";
+export type { LocalReviewForm, LocalOperation, WorkflowProductRef, WorkflowClientRef, DeveloperWorkflowClient, DeveloperWorkflowRequest, DeveloperWorkflowRequests, DeveloperWorkflowResults, DeveloperWorkflowAction, DeveloperWorkflowContract } from "./developer-workflow";

@@ -1292,12 +1292,18 @@ function checkAgentFeatures(m: Json, matrix: SupportMatrix, out: Finding[]): voi
 }
 
 
-/** range 的生效下界 = 最高的 `>=` / `>` 比较子（与 Rust host_api_range_floor 同语义）。 */
+/** 精确、caret、tilde、`>=` / `>` 的最高下界，与 Rust host_api_range_floor 同语义。 */
 function hostApiRangeFloor(range: string): string | null {
   let floor: string | null = null;
-  for (const match of range.matchAll(/>=?\s*(\d+\.\d+\.\d+)/g)) {
-    const version = match[1];
-    if (version && (floor === null || compareVersions(version, floor) > 0)) floor = version;
+  for (const token of range.trim().split(/\s+/)) {
+    // 与 satisfiesHostApiRange 一样，只接受完整三段稳定数字，不剥离 prerelease。
+    const match = /^(>=|<=|>|<|=|\^|~)?(\d+)\.(\d+)\.(\d+)$/.exec(token);
+    if (!match) return null;
+    const parts = match.slice(2);
+    if (parts.some((part) => part !== String(Number(part)))) return null;
+    if (match[1] === "<" || match[1] === "<=") continue;
+    const version = parts.join(".");
+    if (floor === null || compareVersions(version, floor) > 0) floor = version;
   }
   return floor;
 }

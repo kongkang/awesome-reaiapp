@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { packApp, packedFiles, verifyPackagedResources, validateManifest, validateLocaleBytes, readSourceReviewEvidence, type SourceReviewEvidence } from "../packages/i18n-cli/src/index";
+import { packApp, packedFiles, parseCompression, verifyPackagedResources, validateManifest, validateLocaleBytes, readSourceReviewEvidence, type SourceReviewEvidence, type PackOptions } from "../packages/i18n-cli/src/index";
 
 export interface SubmissionIdentity {
   schemaVersion: 1;
@@ -207,15 +207,16 @@ export function preflightStatus(contract: ServerContract) {
 }
 const contractReceipt = (contract: ServerContract) => ({ name: contract.name, baseline: contract.baseline, backend: contract.backend });
 
-export async function packSubmission(root: string, output: string, contract: ServerContract = DEFAULT_SERVER_CONTRACT, evidence?: SourceReviewEvidence) {
+export async function packSubmission(root: string, output: string, contract: ServerContract = DEFAULT_SERVER_CONTRACT, evidence?: SourceReviewEvidence, options: PackOptions = {}) {
+  const compression = parseCompression(options.compression);
   const { identity, manifest } = verifySource(root, contract, evidence);
   if (!output.endsWith(".reaiapp")) fail("output must end in .reaiapp");
   mkdirSync(dirname(output), { recursive: true });
   const temp = mkdtempSync(join(dirname(output), ".plugin-submission-"));
   try {
     const first = join(temp, "first.reaiapp"), second = join(temp, "second.reaiapp");
-    await packApp(root, first, true, evidence);
-    await packApp(root, second, true, evidence);
+    await packApp(root, first, true, evidence, { compression });
+    await packApp(root, second, true, evidence, { compression });
     const bytes = readFileSync(first);
     if (!bytes.equals(readFileSync(second))) fail("two builds produced different package bytes");
     const checked = verifyArchive(bytes, identity, manifest.version, contract, evidence, root);
@@ -224,8 +225,9 @@ export async function packSubmission(root: string, output: string, contract: Ser
       ...identity, version: manifest.version, packageFile: basename(output),
       sourceReviewEvidence: evidence ? { purpose: evidence.purpose, sha256: sha256(Buffer.from(JSON.stringify(evidence))), runtimeGrant: false, platformApproval: false } : null,
       sha256: checked.sha256, sizeBytes: checked.sizeBytes,
+      ...(compression === "deflate" ? { compression } : {}),
       sourceManifestSha256: sha256(readFileSync(join(root, "app.manifest.json"))),
-      checks: ["identity", "manifest-schema", "server-contract", "locale-resources", "packaged-png-icon", "resource-hashes", "two-identical-builds"],
+      checks: ["identity", "manifest-schema", "server-contract", "locale-resources", "packaged-png-icon", "resource-hashes", "two-identical-builds", ...(compression === "deflate" ? ["deterministic-deflate"] : [])],
       note: "Product ID is submission metadata, not a Manifest field. Upload requires a real CAS fileId and a fresh review quote."
         + (contract.backend === "deployed" ? "" : ` Checked against the pending backend contract ${contract.baseline}: do not upload until that backend rollout is deployed.`),
     };
@@ -239,27 +241,27 @@ export async function packSubmission(root: string, output: string, contract: Ser
 
 export function parseSubmissionArgs(args: string[]) {
   const [command, directory, ...options] = args;
-  const usage = "usage: bun scripts/plugin-submission.ts check <pluginDir> [--package file.reaiapp] [--form-version version] [--server-contract name] [--source-review file.json] | pack <pluginDir> --out file.reaiapp [--form-version version] [--server-contract name] [--source-review file.json]";
+  const usage = "usage: bun scripts/plugin-submission.ts check <pluginDir> [--package file.reaiapp] [--form-version version] [--server-contract name] [--source-review file.json] | pack <pluginDir> --out file.reaiapp [--form-version version] [--server-contract name] [--source-review file.json] [--compression store|deflate]";
   if (!directory || !["check", "pack"].includes(command) || options.length % 2) fail(usage);
   const parsed = new Map<string, string>();
   for (let index = 0; index < options.length; index += 2) {
     const key = options[index], value = options[index + 1];
-    if (!["--form-version", "--server-contract", "--source-review", command === "pack" ? "--out" : "--package"].includes(key) || !value || value.startsWith("--") || parsed.has(key)) fail(usage);
+    if (!["--form-version", "--server-contract", "--source-review", ...(command === "pack" ? ["--out", "--compression"] : ["--package"])].includes(key) || !value || value.startsWith("--") || parsed.has(key)) fail(usage);
     parsed.set(key, value);
   }
   if (command === "pack" && !parsed.has("--out")) fail(usage);
   const contract = serverContract(parsed.get("--server-contract") ?? DEFAULT_SERVER_CONTRACT.name);
-  return { command, directory, target: parsed.get(command === "pack" ? "--out" : "--package"), formVersion: parsed.get("--form-version"), sourceReview: parsed.get("--source-review"), contract };
+  return { command, directory, target: parsed.get(command === "pack" ? "--out" : "--package"), formVersion: parsed.get("--form-version"), sourceReview: parsed.get("--source-review"), contract, compression: parseCompression(parsed.get("--compression")) };
 }
 
 if (import.meta.main) {
   try {
-    const { command, directory, target, formVersion, sourceReview, contract } = parseSubmissionArgs(process.argv.slice(2));
+    const { command, directory, target, formVersion, sourceReview, contract, compression } = parseSubmissionArgs(process.argv.slice(2));
     const root = resolve(directory);
     const evidence: SourceReviewEvidence | undefined = sourceReview ? readSourceReviewEvidence(resolve(sourceReview)) : undefined;
     const { identity, manifest } = verifySource(root, contract, evidence);
     if (formVersion !== undefined) verifyFormVersion(identity, formVersion);
-    if (command === "pack") console.log(JSON.stringify(await packSubmission(root, resolve(target!), contract, evidence), null, 2));
+    if (command === "pack") console.log(JSON.stringify(await packSubmission(root, resolve(target!), contract, evidence, { compression }), null, 2));
     else {
       const packed = target ? verifyArchive(readFileSync(resolve(target)), identity, manifest.version, contract, evidence, root) : undefined;
       console.log(JSON.stringify({ status: preflightStatus(contract), serverContract: contractReceipt(contract), ...identity, formVersionCheck: formVersion === undefined ? "not-provided" : "matched-explicit-input", ...(packed ? { sha256: packed.sha256, sizeBytes: packed.sizeBytes } : {}) }, null, 2));

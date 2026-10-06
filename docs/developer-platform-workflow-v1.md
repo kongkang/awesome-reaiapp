@@ -1,8 +1,8 @@
 # 开放平台工作流（Host API 1.21 候选）
 
-> 规范同步日期：2026-10-06。仅系统插件可用的候选合同；本仓库当前 SDK 尚未提供
-> `developerPlatform.workflow`，本仓 CLI 也不证明此接口可用。文档不代表普通插件获得权限，
-> 也不代表已安装 Host、已批准插件包或线上服务已经支持。工具链与实际产品须分别交付验证。
+> 源码同步日期：2026-10-06。本仓 SDK 已提供 `developerPlatform.workflow` 的类型、
+> 校验器和调用入口。此合同仅供系统插件使用；源码交付不代表普通插件获得权限，
+> 或已安装 Host、已批准插件包与线上服务已经支持。实际产品须单独验收。
 
 此接口仅供 `com.reai.developer-center` 系统插件使用。普通插件、伪造同名本地包、关闭开发者模式的会话不得调用。候选源码与生产批准插件包是不同交付物；源码通过测试不代表线上联调完成。
 
@@ -20,8 +20,9 @@
 
 Host 读取实际 token 的 scope；编译配置含新 scope 不代表旧 token 已获授权。权限不足由 capabilities 显示 missingScopes，必须重新 consent。
 
-请求/响应类型及其 schema 由上游平台合同维护；本仓尚未提供对应类型、fixture 或生成入口。
-正式实现须让 Host 与 Mock 使用同一结构，本页不提供不存在的本仓执行命令。
+请求/响应类型、Schema 与 fixture 位于 `packages/sdk/src/v1/developer-platform-contract/`
+和 SDK 测试目录。生成入口为 `packages/sdk/scripts/generate-developer-workflow-schema.ts`；
+Host 与 Mock 应使用同一合同结构。公开源码不包含 Host 的部署或授权操作。
 
 Host 拒绝未知请求字段；响应只投影合同字段。未知服务端状态保留为字符串，页面只读展示，不默认变成成功状态。
 

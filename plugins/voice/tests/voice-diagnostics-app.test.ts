@@ -71,6 +71,7 @@ async function harness(
       versionCalls += 1;
       return await versionStatus();
     }
+    if (method === "environment.get") return { developerMode: true };
     const result = await original(method, params);
     return rewrite ? rewrite(method, result) : result;
   };
@@ -118,16 +119,16 @@ test("前台失败面板：复制内容是主句 + 白名单诊断；原文不�
     const answer = h.answers()[0]!;
     expect(answer.status).toBe("failed");
     expect(answer.canCopy).toBeTrue();
-    expect(answer.text).toContain("错误码: AGENT_ENGINE");
+    expect(answer.text).not.toContain("AGENT_ENGINE");
     // Host API 1.22（#953）：结构化错误码单独交给面板；原始原因（detail）不传。
     expect((answer as { errorCode?: string }).errorCode).toBe("AGENT_ENGINE");
     expect(answer).not.toHaveProperty("detail");
-    expect(answer.text).toContain(`插件版本: com.reai.voice ${VOICE_PLUGIN_VERSION}`);
-    expect(answer.text).toContain("当前步骤: Agent 处理");
+    expect(answer.text).not.toContain(VOICE_PLUGIN_VERSION);
+    expect(answer.text).not.toContain("当前步骤:");
     // 浮层对旁人可见：诊断不带上游原文、凭据与用户说的话；业务内容（原话一节）照旧。
     for (const leaked of ["INVALID_REQUEST", "Bearer", "sk-ABCDEFGH1234", "测试语音命令", "13800138000", "%E6%B5%8B"]) expect(answer.text).not.toContain(leaked);
     expect(answer.sections?.find(section => section.label === "原文")?.text).toBe("测试语音命令");
-    expect(answer.sections?.find(section => section.label === "诊断信息")?.text).toContain("错误码: AGENT_ENGINE");
+    expect(answer.sections?.find(section => section.label === "诊断信息")).toBeUndefined();
 
     const [item] = await h.history();
     // 落盘只有结构化字段：原文字符数、来源类别、时间；上游原文（含回显的原话与凭据）一个字都不落。
@@ -173,7 +174,7 @@ test("Agent 失败按 Host 阶段细化（2.14.2）：面板与历史主句说�
     expect(answer.sections?.find(section => section.label === "错误")?.text).toBe(sentence);
     expect(answer.text).toStartWith(sentence);
     for (const line of ["错误码: AGENT_ENGINE", "Agent 阶段: 引擎异常退出 (DSH_ENGINE_EXITED)", "引擎退出码: 1", "引擎上报的上游码: AI_RATE_LIMITED"]) {
-      expect(answer.text).toContain(line);
+      expect(answer.text).not.toContain(line);
     }
     for (const leaked of ["Error:", "upstream echoed", "Bearer", "abc.def"]) expect(answer.text).not.toContain(leaked);
 
@@ -215,7 +216,7 @@ test("Host 给的具体失败码（预算）原样保留：面板、历史、胶
     const sentence = "这次任务已达到模型调用次数上限，请缩小问题后再试。你的内容已保存。";
     expect(answer.errorCode).toBe("AGENT_MODEL_BUDGET_EXCEEDED");
     expect(answer.sections?.find(section => section.label === "错误")?.text).toBe(sentence);
-    expect(answer.text).toContain("错误码: AGENT_MODEL_BUDGET_EXCEEDED");
+    expect(answer.text).toBe(sentence);
     expect(answer.text).not.toContain("AGENT_ENGINE");
     const [item] = await h.history();
     expect(item).toMatchObject({ errorCode: "AGENT_MODEL_BUDGET_EXCEEDED", userMessage: sentence });
@@ -370,7 +371,7 @@ test("门禁失败的结果面板只放按码查表的固定短句：Host 的 us
     await h.host.invokeCommand("com.reai.voice.command.agent");
     await until(() => h.answers().length === 1, "门禁失败进入结果面板");
     const answer = h.answers()[0]!;
-    expect(answer.text).toContain("错误码: AGENT_BACKEND_UNAVAILABLE");
+    expect((answer as { errorCode?: string }).errorCode).toBe("AGENT_BACKEND_UNAVAILABLE");
     const shown = [answer.text ?? "", ...(answer.sections ?? []).map((section) => section.text)].join(" | ");
     for (const piece of ["13800138000", "请把合同", "Bearer", "Host said"]) expect(shown).not.toContain(piece);
   } finally { await h.dispose(); }

@@ -1,3 +1,7 @@
+import { buildVoiceTypedAttachments, parseVoiceAttachmentTarget, uploadVoiceImage, type PreparedVoiceAttachment, type VoiceAttachmentTarget } from "./voice-attachment-input";
+import { buildVoiceAttachmentTurn, VOICE_TEXT_ATTACHMENT_POLICY, VoiceAttachmentContentError } from "./voice-attachment-content";
+import { confirmedVoiceAttachmentFormats, requireVoiceAttachmentAdmission } from "./voice-attachment-admission";
+import { pendingVoiceRequestHasFileAttachments, requireVoiceTaskAttachmentScene } from "./voice-attachment-scene";
 import { PendingAgentRequests, type PendingAgentRequest } from "./agent-pending";
 import { createVoiceAgentTurns } from "./agent-turns";
 import { VOICE_START_TIMEOUT_MS, awaitVoicePreparation, withVoiceStartDeadline } from "./voice-start-deadline";
@@ -121,7 +125,7 @@ import {
   type VoiceRequestPurpose,
 } from "./voice-user-errors";
 import { presentAgentToolError } from "./agent-error-presentation";
-import { errorDetailFrom, safeHostResultDiagnostics, stepText } from "./voice-diagnostics";
+import { errorDetailFrom } from "./voice-diagnostics";
 import {
   collectErrorFields,
   diagnosticLogFields,
@@ -130,12 +134,12 @@ import {
   withOuterCode,
   type VoiceErrorFields,
 } from "./voice-error-fields";
-import { deliverReasonLabel, hostErrorCode, taskFailureLabel, withCode } from "./voice-failure-labels";
+import { deliverReasonLabel, hostErrorCode, taskFailureLabel } from "./voice-failure-labels";
 import { agentTurnFailureCode } from "./agent-failure-codes";
 import { VoiceAppError, commandWireError, constantUserMessage, trustedDiagnosticFields } from "./voice-app-error";
 import { HostVersionReader } from "./voice-host-version";
 import { commandStepKey, interruptedLabel, stoppedLabel } from "./voice-stop-copy";
-import { classifyUtterance } from "./voice-utterance";
+import { classifyUtterance, shouldTranslateUtterance } from "./voice-utterance";
 // 共享对话组件的样式先于插件自己的：voice.css 只通过 --chat-dock-x 变量调它，不覆盖其类规则。
 import "@reai/chat-ui/styles.css";
 import "./voice.css";
@@ -233,12 +237,21 @@ interface ActiveCommandRun {
   runId?: string;
   durableAgent?: boolean;
   transcript: string;
+  inputAttachments?: VoiceChatMessage["attachments"];
   commandId: VoiceCommandId;
   createdAt: string;
 }
 const activeCommandRuns = new Map<string, ActiveCommandRun>();
 /** 一次命令运行的附加入参（`startCommandAgent` 与 `runCommandAgent` 共用）。 */
 interface CommandRunOptions {
+  /** Follow-up in a translation scene stays a tools-free translator, not a task. */
+  readOnlyTranslation?: boolean;
+  translationTarget?: VoiceFeatureSettings["translationTarget"];
+  attachments?: readonly PreparedVoiceAttachment[];
+  /** Already validated follow-up body; dispatch must use these exact bytes. */
+  attachmentTurnText?: string;
+  attachmentInput?: import("@reai/app-sdk/v1").AgentAttachmentTurnInput;
+  inputAttachments?: VoiceChatMessage["attachments"];
   title?: string;
   dshSessionId?: string;
   agentSessionId?: string;
@@ -297,7 +310,7 @@ async function settleInterruptedCommand(taskId: string, run: ActiveCommandRun): 
     ...(run.agentSessionId ? { agentSessionId: run.agentSessionId } : {}),
     ...(run.conversationId ? { conversationId: run.conversationId } : {}),
     messages: [
-      { from: "user", text: run.transcript, at: run.createdAt },
+      { from: "user", text: run.transcript, at: run.createdAt, attachments: run.inputAttachments },
       { from: "ai", text: interruptedLabel(run.commandId), at },
     ],
     errorCode: "VOICE_COMMAND_INTERRUPTED",
@@ -502,6 +515,7 @@ export default defineApp({
     // Subscribe only after publish is initialized. Events can arrive while the
     // initial snapshot is in flight; the SDK preserves the newest value.
     ctx.environment.onChange((environment) => publish({ developerMode: environment.developerMode }));
+    // SDK environment.get() 按 revision 返回最新快照，迟到读取不会覆盖开关事件。
     const environment = await ctx.environment.get().catch(() => ({ developerMode: false }));
     publish({ developerMode: environment.developerMode });
 
@@ -520,7 +534,7 @@ export default defineApp({
         ...(run.conversationId ? { conversationId: run.conversationId } : {}),
         ...(run.runId ? { runId: run.runId } : {}),
         messages: [
-          { from: "user", text: run.transcript, at: run.createdAt },
+          { from: "user", text: run.transcript, at: run.createdAt, attachments: run.inputAttachments },
           ...cards.map((card) => ({ from: "ai" as const, text: "", at: new Date().toISOString(), card })),
         ],
       };
@@ -1790,11 +1804,11 @@ export default defineApp({
       if (undelivered) {
         // 胶囊先说一句「文字没有写入」（必须先于任何确认送达），再弹取回卡。
         await overlayStages.report(result.sessionId, "insert_failed");
-        // 原因里的码与 errorCode 同为登记过的真实码（没有时才用类别），不抹成类别（§6.0 ⑦）。
+        // 真实码独立传给开发模式诊断；普通原因只用固定人话。
         const code = deliveryFailure?.code ?? undelivered.reason;
         const card = {
           title: t("view.textNotInsertedTitle"),
-          reason: withCode(deliverReasonLabel(undelivered.reason), code),
+          reason: deliverReasonLabel(undelivered.reason),
           text: undelivered.text,
           ...hostErrorCode(code),
         };
@@ -2420,7 +2434,7 @@ export default defineApp({
         cards.push(presented.card);
       }
       const messages: VoiceChatMessage[] = [
-        { from: "user", text: transcript, at: createdAt },
+        { from: "user", text: transcript, at: createdAt, attachments: activeCommandRuns.get(taskId)?.inputAttachments },
         ...cards.map((card) => ({ from: "ai" as const, text: "", at: createdAt, card,
           ...(metadata?.runtime ? { runtime: metadata.runtime } : {}),
           ...(metadata?.channel ? { channel: metadata.channel } : {}),
@@ -2615,17 +2629,13 @@ export default defineApp({
       /** Agent 引擎阶段 / 退出码 / 上游码（已采集字段里按出身取的结构化值）。 */
       agentFailure?: VoiceErrorFields["agentFailure"];
     }): Promise<void> => {
-      // 诊断正文只含步骤、码、时间；两端身份由Host结果窗统一注入（不含原文与用户内容）。
-      // 业务内容（原话、错误主句）照旧；Host 面板「复制」复制的是 text = 主句 + 这段诊断。
-      const diagnostics = safeHostResultDiagnostics(
-        { step: () => stepText(commandStepKey(input.commandId)), code: input.code, agentFailure: input.agentFailure },
-      );
+      // 业务字段只含失败主句；结构化码交给 Host 开发模式诊断区。
       await ctx.voiceCommand.presentAnswer({
         runId: input.taskId,
         badge: COMMAND_LABEL[input.commandId],
         get title() { return t("app.valueIncomplete", { value0: COMMAND_LABEL[input.commandId] }); },
-        // 复制 = 错误主句 + 安全诊断（码、步骤、两端版本、时间），不是假装成结果的原文（§6.0 ④）。
-        text: `${input.message}\n\n${diagnostics}`,
+        // 普通内容复制只含失败主句；技术字段通过 Host 独立诊断入口复制。
+        text: input.message,
         originalText: input.transcript,
         status: "failed",
         // Host API 1.22（#953 同版本并入）：面板失败区显示并随「复制诊断」复制；旧 Host 忽略。原始原因不传。
@@ -2635,7 +2645,6 @@ export default defineApp({
             ? [{ label: t("app.original"), text: input.transcript }]
             : []),
           { label: t("app.error"), text: input.message },
-          { label: t("diagnostics.title"), text: diagnostics },
         ],
         canCopy: true,
         canContinue: input.itemPersisted,
@@ -2706,7 +2715,8 @@ export default defineApp({
       // Only this run's returned Host envelope is evidence; settings/pre-dispatch
       // errors cannot supply historical runtime or usage. Snapshot before throws.
       let finalAgentMetadata: Pick<VoiceChatMessage, "runtime" | "channel" | "usage"> | undefined;
-      const targetLanguage = state.featureSettings.translationTarget;
+      const targetLanguage = options.translationTarget ?? state.featureSettings.translationTarget;
+      const writesBack = shouldWriteBack(commandId) && !(commandId === BUILTIN_VOICE_COMMANDS.translate && options.readOnlyTranslation);
       const startedAt = Date.now();
       let snapshot = initialSnapshot({
         taskId,
@@ -2932,7 +2942,10 @@ export default defineApp({
                   // F04：切换后的新会话在第一轮被受理之前（含受理前失败后的重试）都附上有界可见聊天。
                   // 翻译：明确的「只输出译文」指令 + 随机标记包住的原文，不把原话当成对它说的话。
                   text: !persistent ? translationTurnText(polished.text, targetLanguage)
-                    : createdByThisRun || continuationPending ? continuationPrompt(options.visibleContext ?? [], polished.text) : polished.text,
+                    : options.attachmentTurnText ?? (options.attachments?.length && !options.attachmentInput ? buildVoiceAttachmentTurn(polished.text, options.attachments.filter((file): file is Extract<PreparedVoiceAttachment,{content:string}> => file.kind!=="image"),
+                      createdByThisRun || continuationPending ? options.visibleContext ?? [] : [], VOICE_TEXT_ATTACHMENT_POLICY)
+                    : createdByThisRun || continuationPending ? continuationPrompt(options.visibleContext ?? [], polished.text) : polished.text),
+                  ...(options.attachmentInput ? { attachmentInput: options.attachmentInput } : {}),
                   taskPresentation: "caller",
                   remember: persistent,
                   ...(persistent ? { onAccepted: async (ref: AgentTurnRef) => {
@@ -3043,7 +3056,7 @@ export default defineApp({
         let stageLabel = () => t("app.completed");
         let delivered: { committed: boolean; reason?: string; code?: string } | undefined;
         let takebackFallback: CommandTakebackCard | undefined;
-        if (shouldWriteBack(commandId)) {
+        if (writesBack) {
           delivered = await deliver(target, result.reply);
           if (disposition === "foreground") {
             if (delivered.committed) overlayStages.release(options.resultSessionId);
@@ -3060,7 +3073,7 @@ export default defineApp({
               title: commandId === BUILTIN_VOICE_COMMANDS.translate
                 ? t("app.translationNotInsertedTitle")
                 : t("view.textNotInsertedTitle"),
-              reason: withCode(deliverReasonLabel(delivered.reason), code),
+              reason: deliverReasonLabel(delivered.reason),
               text: result.reply,
               code,
             };
@@ -3091,7 +3104,7 @@ export default defineApp({
           durationMs: result.durationMs,
           createdAt: activeCommandRuns.get(taskId)?.createdAt ?? new Date(startedAt).toISOString(),
           messages: [
-            { from: "user", text: transcript, at: new Date(startedAt).toISOString() },
+            { from: "user", text: transcript, at: new Date(startedAt).toISOString(), attachments: activeCommandRuns.get(taskId)?.inputAttachments },
             ...(commandAgentCards.get(taskId) ?? []).map((card) => ({
               from: "ai" as const,
               text: "",
@@ -3140,7 +3153,7 @@ export default defineApp({
             if (await presentTakebackFallback({ taskId, commandId, transcript, card: takebackFallback, itemPersisted })) {
               finishWriteBackInForeground(taskId, options.resultSessionId);
             }
-          } else if (shouldWriteBack(commandId)) {
+          } else if (writesBack) {
             finishWriteBackInForeground(taskId, options.resultSessionId);
           } else {
             await presentAgentResult({
@@ -3165,7 +3178,7 @@ export default defineApp({
           taskSettled = true;
           // Agent 转入后台后才完成：结果同样一律弹只读结果框（2026-09-27 定稿）。先报终态帧
           // 再请求迟到结果框，runId 用这条后台任务的 taskId——用户关闭或点「继续」即算看过。
-          if (!shouldWriteBack(commandId) && isRunActive()) {
+          if (!writesBack && isRunActive()) {
             await presentAgentResult({
               runId: taskId,
               commandId,
@@ -3194,7 +3207,6 @@ export default defineApp({
         }
         if (controller.signal.aborted) cause = commandCancelledError(commandId);
         const disposition = await presentationGate.complete();
-        const writesBack = shouldWriteBack(commandId);
         /** 取回卡被 Host 拒了：失败收尾改弹失败结果面板（同一内容），不能一个窗口都不给。 */
         let failureTakebackFallback: CommandTakebackCard | undefined;
         const settleCommandFailure = async (stageLabel: string) => {
@@ -3335,7 +3347,7 @@ export default defineApp({
           const code = delivered.code ?? delivered.reason;
           const card: CommandTakebackCard = {
             title: t("view.textNotInsertedTitle"),
-            reason: withCode(deliverReasonLabel(delivered.reason), code),
+            reason: deliverReasonLabel(delivered.reason),
             text: transcript,
             code,
           };
@@ -3348,7 +3360,7 @@ export default defineApp({
           if (commandId === BUILTIN_VOICE_COMMANDS.translate && !controller.signal.aborted) {
             const card: CommandTakebackCard = {
               title: t("app.translationFailedTitle"),
-              reason: withCode(voiceRequestFailureMessage("translation", cause), collectErrorFields(cause).code),
+              reason: voiceRequestFailureMessage("translation", cause),
               text: transcript,
               code: collectErrorFields(cause).code,
             };
@@ -3417,6 +3429,7 @@ export default defineApp({
         agentSessionId: options.agentSessionId,
         conversationId: options.conversationId,
         transcript,
+        inputAttachments: options.attachments?.map(file => ({ kind: "file", name: file.name, meta: `${file.mimeType} · ${file.byteLength} B` })) ?? options.inputAttachments,
         commandId,
         createdAt: new Date().toISOString(),
       };
@@ -3431,6 +3444,7 @@ export default defineApp({
           commandId,
           status: "running",
           createdAt: run.createdAt,
+          ...(run.inputAttachments?.length ? { messages: [{ from: "user" as const, text: transcript, at: run.createdAt, attachments: run.inputAttachments }] } : {}),
           ...(options.agentSessionId ? { agentSessionId: options.agentSessionId } : {}),
           ...(options.conversationId ? { conversationId: options.conversationId } : {}),
           // 回听引用在 running 落账时登记，终态结算（成功 / 失败 / 中断）沿用。
@@ -3477,6 +3491,7 @@ export default defineApp({
         ...(item.conversationId ? { conversationId: item.conversationId } : {}),
         ...(item.runId ? { runId: item.runId } : {}),
         transcript: item.transcript, commandId: BUILTIN_VOICE_COMMANDS.agent, createdAt: item.createdAt,
+        inputAttachments: item.messages?.find(message => message.from === "user")?.attachments,
       };
       activeCommandRuns.set(item.id, run);
       run.finished = runCommandAgent(item.id, controller, item.transcript, BUILTIN_VOICE_COMMANDS.agent, undefined, {
@@ -3578,9 +3593,62 @@ export default defineApp({
      * 因而同一详情页里的文字与语音追问会进入同一段对话。结果仍作为新条目落进
      * 命令历史，同时走答案面板；没有 session 的旧历史会在首次追问时新建会话。
      */
+    const attachmentChoiceKey = (item: VoiceCommandHistoryItem): string => JSON.stringify({key:conversationKey(item),choices:state.conversationOptions?.[conversationKey(item)]??null,session:item.agentSessionId??null});
+    let attachmentPreparation: Promise<VoiceAttachmentTarget> | undefined;
+    let attachmentPreparationKey: string | undefined;
+    const prepareCommandAttachments = (conversation?: VoiceAgentConversationRef): Promise<VoiceAttachmentTarget> => {
+      const requestKey=JSON.stringify(conversation);
+      if (attachmentPreparation) return attachmentPreparationKey===requestKey?attachmentPreparation:Promise.reject(new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED"));
+      attachmentPreparationKey=requestKey;
+      const work = async (): Promise<VoiceAttachmentTarget> => {
+        const item=state.commandHistory.find(entry=>conversation?.conversationId?conversationKey(entry)===conversation.conversationId:conversation?.agentSessionId?entry.agentSessionId===conversation.agentSessionId:false);
+        requireVoiceTaskAttachmentScene(item?.commandId);
+        if (!item || !ctx.agent.attachmentAdmission || state.commandPhase!=="idle" || state.phase!=="idle" || state.dictationPhase!=="idle") throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+        const key=conversationKey(item);const previous=state.conversationOptions?.[key];
+        if(conversationChanges.has(key)||!canChangeConversation(conversationMembers(item,state.commandHistory)))throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+        const assertIdle=()=>{if(state.commandPhase!=="idle"||state.phase!=="idle"||state.dictationPhase!=="idle"||state.conversationOptions?.[key]!==previous||conversationChanges.has(key))throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");};
+        const backends=await ctx.agent.backends({schemaVersion:2});assertIdle();
+        const backend=previous?.backend??state.agentExperiment.backend;
+        const ready=agentReadiness(backend,backends);
+        const status=ready.kind==="ready"?backends.backends.find(row=>row.backend===ready.backend):undefined;
+        if(status?.capabilities?.configuration?.attachmentInputVersion!==1)throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+        let sessionId=previous?previous.sessionId:item.agentSessionId;
+        if(!sessionId || !sessionId.startsWith("agent2-")){
+          const scopedExecution=availableConversationBackends(status?[status]:[]).length>0;
+          if(!scopedExecution&&(previous?.backend||previous?.workspace?.kind==="direct"))throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+          const created=await ctx.agent.createSession(await withVoiceFeatureRef(createVoiceCommandSessionConfig({backend,workspace:previous?.workspace,scopedExecution}),"command",undefined,ctx.agent,backends.backends));
+          try{
+            assertIdle();
+            if(scopedExecution&&(previous?.backend||previous?.workspace?.kind==="direct")&&(created.scopeVersion!==1||!created.workspaceRoot||!created.workspace))throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+            await registerCommandAgentSession(created.sessionId);assertIdle();
+            const options=await repository.saveConversationOptions(key,{...previous,sessionId:created.sessionId,resolvedBackend:created.backend,...(created.workspace?{workspace:created.workspace}:{}),...(created.workspaceRoot?{workspaceRoot:created.workspaceRoot}:{}),...(created.scopeVersion===1?{scopeVersion:1 as const}:{}),continuationPending:true});
+            publish({conversationOptions:options});sessionId=created.sessionId;
+          }catch(error){await ctx.agent.deleteSession({sessionId:created.sessionId}).catch(()=>undefined);throw error;}
+        }
+        const ownerKey=attachmentChoiceKey(item);
+        const admission=await ctx.agent.attachmentAdmission({schemaVersion:1,sessionId});
+        if(attachmentChoiceKey(item)!==ownerKey||conversationChanges.has(key))throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+        const target=parseVoiceAttachmentTarget(sessionId,ownerKey,admission);
+        if(!target||!target.formats.length)throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+        return target;
+      };
+      attachmentPreparation=work().finally(()=>{attachmentPreparation=undefined;});return attachmentPreparation;
+    };
+    let imageUploadQueue: Promise<unknown> = Promise.resolve();
+    const uploadCommandImage=(file:File,target:VoiceAttachmentTarget,signal:AbortSignal):Promise<PreparedVoiceAttachment>=>{
+      const work=imageUploadQueue.catch(()=>undefined).then(()=>{
+        if(!ctx.agent.attachmentUploads)throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+        return uploadVoiceImage(file,target,ctx.agent.attachmentUploads,signal);
+      });imageUploadQueue=work;return work;
+    };
+    const releaseCommandAttachment=async (file:PreparedVoiceAttachment)=>{
+      if(file.kind!=="image"||!ctx.agent.attachmentUploads)return;
+      await ctx.agent.attachmentUploads.cancel({schemaVersion:1,sessionId:file.target.sessionId,admission:{...file.target.admission,modes:["image"]},leaseId:file.part.leaseId}).catch(()=>undefined);
+    };
     const sendCommandFollowUp = async (
       text: string,
       conversation?: VoiceAgentConversationRef,
+      attachments: readonly PreparedVoiceAttachment[] = [],
     ): Promise<string> => {
       const trimmed = text.trim();
       if (!trimmed) {
@@ -3622,24 +3690,39 @@ export default defineApp({
       }
       const savedChoices = key ? state.conversationOptions?.[key] : undefined;
       const choices = savedChoices;
-      const sessionId = choices ? choices.sessionId : conversation?.agentSessionId;
+      const translationScene = sourceItem?.commandId === BUILTIN_VOICE_COMMANDS.translate;
+      const sessionId = translationScene ? undefined : choices ? choices.sessionId : conversation?.agentSessionId;
       if (key && conversationChanges.has(key)) throw new VoiceAppError({ code: "com.reai.voice/VOICE_BUSY", userMessage: t("chat.scopeSaving"), retryable: true }, undefined, { constantMessage: true });
+      // Validate before publishing processing / clearing the UI draft. No original-file handle is granted.
+      if (attachments.length) requireVoiceTaskAttachmentScene(sourceItem?.commandId);
+      const preparedFiles = attachments.map(file => ({ ...file }));
+      const target=preparedFiles.length?await prepareCommandAttachments(conversation):undefined;
+      if(target && target.sessionId!==sessionId)throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+      for (const file of preparedFiles) requireVoiceAttachmentAdmission({name:file.name,type:file.mimeType},target?.formats??[]);
+      const attachmentInput=target?buildVoiceTypedAttachments(preparedFiles,target):undefined;
+      const visibleContext = !translationScene && (!sessionId || choices?.continuationPending) ? visibleConversationContext(members) : [];
+      const attachmentTurnText = attachmentInput ? continuationPrompt(visibleContext,trimmed) : undefined;
       followUpAdmissionInFlight = true;
       try {
         // 旧会话不静默提权：没有显式改过 Agent / 目录的对话继续用原会话；用户在范围
         // 面板里改过选择后 sessionId 已被清空，下一条才新建带范围的会话并续接可见聊天。
-        if (!sessionId) await requireUnifiedAgentReady(choices?.backend, Boolean(choices?.backend || choices?.workspace?.kind === "direct"));
+        if (!sessionId) await requireUnifiedAgentReady(translationScene ? undefined : choices?.backend,
+          !translationScene && Boolean(choices?.backend || choices?.workspace?.kind === "direct"));
         if ((key && (conversationChanges.has(key) || state.conversationOptions?.[key] !== savedChoices)) || state.commandPhase !== "idle" || state.phase !== "idle" || state.dictationPhase !== "idle") {
           throw new VoiceAppError({ code: "com.reai.voice/VOICE_BUSY", userMessage: t("chat.scopeSaving"), retryable: true }, undefined, { constantMessage: true });
         }
         publish({ commandPhase: "processing", activeMode: "command", error: undefined });
         // 与所有 Command 同一条 3 秒口径；交付目标不存在（这不是录音），也不往当前应用里打字。
-        return startCommandAgent(trimmed, BUILTIN_VOICE_COMMANDS.agent, undefined, {
+        return startCommandAgent(trimmed, translationScene ? BUILTIN_VOICE_COMMANDS.translate : BUILTIN_VOICE_COMMANDS.agent, undefined, {
+          ...(translationScene ? { readOnlyTranslation: true, translationTarget: sourceItem.translationTarget } : {}),
+          attachments: preparedFiles,
+          attachmentTurnText,
+          attachmentInput,
           ...(sessionId ? { agentSessionId: sessionId } : {}),
           ...(key ? { conversationId: key } : {}),
-          conversationOptions: choices,
+          conversationOptions: translationScene ? undefined : choices,
           // 新会话，或切换后的会话还没有一轮被 Host 受理：附上有界可见聊天。
-          ...(!sessionId || choices?.continuationPending ? { visibleContext: visibleConversationContext(members) } : {}),
+          visibleContext,
         });
       } finally { followUpAdmissionInFlight = false; }
     };
@@ -4139,10 +4222,12 @@ export default defineApp({
           if (shouldWriteBack(activeCommandId)) void overlayStages.report(result.sessionId, "transcribing");
           transcript = await transcribeCloudRecording(result, result.audio, originalSelection);
         }
-        // 空话不发请求（2026-09-29 真机反馈，2.14.4-rc.1）：Agent / 翻译拿到没说话、只有标点或语气词、
-        // 只剩一个字的结果，不建会话、不调模型、不写历史、不弹结果面板。转文本不走这里：
-        // 一个字照写，只有完全为空才按下面的「没有听清」处理。追问（带 conversation）同样适用。
-        if (activeCommandId !== BUILTIN_VOICE_COMMANDS.transcribe && classifyUtterance(transcript) !== "substantive") {
+        // 翻译保留短确认和实义单字；Agent 沿用原 substantive 门禁。转文本保持原样。
+        const translationUtterance = activeCommandId === BUILTIN_VOICE_COMMANDS.translate;
+        const skipUtterance = translationUtterance
+          ? !shouldTranslateUtterance(transcript)
+          : activeCommandId !== BUILTIN_VOICE_COMMANDS.transcribe && classifyUtterance(transcript) !== "substantive";
+        if (skipUtterance) {
           publish({ commandPhase: "idle", activeMode: undefined, sessionId: undefined });
           // Host 只在本地识别结果完全为空时显示「没有听清」：让这句停一会儿再收。其余情况
           // （识别出语气词 / 单字，或云端转写）胶囊显示的是「处理中」，交给下面 catch 立刻收掉。
@@ -4158,7 +4243,8 @@ export default defineApp({
             }, EMPTY_UTTERANCE_HINT_MS);
           }
           // 固定文案、固定码：诊断里只有码与版本，不带用户说了什么。
-          throw new VoiceAppError({ code: "com.reai.voice/VOICE_EMPTY_UTTERANCE", get userMessage() { return t("app.emptyUtteranceNotSent"); }, retryable: true }, undefined, { constantMessage: true });
+          throw new VoiceAppError({ code: "com.reai.voice/VOICE_EMPTY_UTTERANCE", get userMessage() { return translationUtterance
+            ? t("app.emptyTranslationNotSent") : t("app.emptyUtteranceNotSent"); }, retryable: true }, undefined, { constantMessage: true });
         }
         if (!transcript) {
           publish({ commandPhase: "idle", activeMode: undefined, sessionId: undefined });
@@ -4710,9 +4796,12 @@ export default defineApp({
               throw cause;
             }
           },
-          onSendCommandFollowUp: async (text, conversation) => {
+          onPrepareAttachments: prepareCommandAttachments,
+          onUploadAttachment: uploadCommandImage,
+          onReleaseAttachment: releaseCommandAttachment,
+          onSendCommandFollowUp: async (text, conversation, attachments) => {
             try {
-              return await sendCommandFollowUp(text, conversation);
+              return await sendCommandFollowUp(text, conversation, attachments);
             } catch (cause) {
               publish(failurePatch("followUp", cause));
               throw cause;
@@ -4728,9 +4817,16 @@ export default defineApp({
             try { recovery = await pendingAdmissions.get(item.agentRequestKey ?? taskId); }
             catch { throw new VoiceAppError({ code: "AGENT_PENDING_NOT_FOUND", userMessage: t("chat.requestRecoveryUnavailable") }, undefined, { constantMessage: true }); }
             if (item.agentSessionId !== recovery.request.sessionId) throw new VoiceAppError({ code: "AGENT_RESULT_IDENTITY_MISMATCH", userMessage: t("chat.requestRecoveryUnavailable") }, undefined, { constantMessage: true });
+            if (!recovery.request.attachmentInput && (item.messages?.find(message => message.from === "user")?.attachments?.some(file => file.kind === "file")
+              || pendingVoiceRequestHasFileAttachments(recovery.request.text))) {
+              requireVoiceTaskAttachmentScene(item.commandId);
+              throw new VoiceAppError({ code: "VOICE_ATTACHMENT_MODEL_UNCONFIRMED", userMessage: t("chat.attachments.errors.VOICE_ATTACHMENT_MODEL_UNCONFIRMED"), retryable: false }, undefined, { constantMessage: true });
+            }
+            if (recovery.request.attachmentInput) requireVoiceTaskAttachmentScene(item.commandId);
             publish({ commandPhase: "processing", activeMode: "command", error: undefined });
             return startCommandAgent(item.transcript, BUILTIN_VOICE_COMMANDS.agent, undefined, {
               agentSessionId: recovery.request.sessionId, recovery,
+              inputAttachments: item.messages?.find(message => message.from === "user")?.attachments,
               // F04：回执恢复后的重试留在原对话里，不另起一段。
               ...(item.conversationId ? { conversationId: item.conversationId } : {}),
             });

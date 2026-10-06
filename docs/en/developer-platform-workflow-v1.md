@@ -5,7 +5,7 @@ description: English reading guide to the system-plugin developer platform workf
 
 # Developer platform workflow
 
-> English reading guide. The [complete Chinese specification](/developer-platform-workflow-v1) is authoritative for exact fields and limits. This is a Host API 1.21 candidate contract, not a full translation or a released capability. The current SDK in this repository does not provide `developerPlatform.workflow`.
+> English reading guide. The [complete Chinese specification](/developer-platform-workflow-v1) is authoritative for exact fields and limits. This is a Host API 1.21 candidate contract, not a full translation or a released capability. The SDK source now provides `developerPlatform.workflow`, its types, and validation. This does not prove support in an installed Host.
 
 ## Restricted system-plugin contract
 

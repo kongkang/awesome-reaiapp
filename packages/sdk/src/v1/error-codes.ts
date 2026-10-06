@@ -4,12 +4,26 @@
  * 插件里写 `catch` 分支时用这里的常量，不要手写字符串字面量：拼错的字符串
  * 编译期不报、运行期静默走错分支。SDK 运行在插件 WebView 里读不到矩阵文件，
  * 所以这份清单是源码内的第二份事实——与矩阵的一致性由
- * `platform/sdk/tests/contract-constants.test.ts` 锁死（Host/Rust 侧同款纪律：
+ * `packages/sdk/tests/contract-constants.test.ts` 锁死（Host/Rust 侧同款纪律：
  * `support_matrix.rs` 的错误码合同测试）。改任何一侧都会先在测试里红。
  */
 
 /** Bridge / 用户权限门禁域（矩阵 `pluginPermissions.stableErrors`）。 */
 export const PLUGIN_BRIDGE_ERROR_CODES = [
+  "AGENT_ATTACHMENT_SCENE_UNSUPPORTED",
+  "AGENT_ATTACHMENT_BINDING_CHANGED",
+  "AGENT_ATTACHMENT_CACHE_CAPACITY",
+  "AGENT_ATTACHMENT_CACHE_CORRUPT",
+  "AGENT_ATTACHMENT_CACHE_SAVE_FAILED",
+  "AGENT_ATTACHMENT_CONTENT_INVALID",
+  "AGENT_ATTACHMENT_INCOMPLETE",
+  "AGENT_ATTACHMENT_INPUT_UNSUPPORTED",
+  "AGENT_ATTACHMENT_LEASE_EXPIRED",
+  "AGENT_ATTACHMENT_READER_DISABLED",
+  "AGENT_ATTACHMENT_TOO_LARGE",
+  "AGENT_ATTACHMENT_UNCONFIRMED",
+  "AGENT_ATTACHMENT_UNSUPPORTED",
+
   "BRIDGE_MESSAGE_TOO_LARGE",
   "BRIDGE_TOO_MANY_INFLIGHT",
   "VOICE_SAVED_INPUT_INVALID_REQUEST",
@@ -138,6 +152,7 @@ export const PLUGIN_BRIDGE_ERROR_CODES = [
   "DEVELOPER_PLATFORM_CONFLICT",
   "DEVELOPER_PLATFORM_RATE_LIMITED",
   "DEVELOPER_PLATFORM_BACKEND_REJECTED",
+  "DEVELOPER_PLATFORM_TESTER_NOT_TEAM_MEMBER",
   "TTS_NOT_GRANTED",
   "TTS_PERMISSION_REQUIRED",
   "TTS_PERMISSION_DENIED",
@@ -167,6 +182,7 @@ export const PLUGIN_BRIDGE_ERROR_CODES = [
 
 /** 安装 / 生命周期 / 贡献点域（矩阵顶层 `stableErrors`）。 */
 export const APP_PLATFORM_ERROR_CODES = [
+
   "HOST_CAPABILITY_NOT_AVAILABLE",
   "HOST_RUNTIME_KIND_NOT_SUPPORTED",
   "HOST_API_INCOMPATIBLE",

@@ -857,30 +857,24 @@ export default configuredVoiceSuite({
         );
         const failedAnswer = host.voiceCommandRequests
           .filter((request) => request.method === "voice.command.present-answer")
-          .at(-1)?.params as { status?: string; canCopy?: boolean; text?: string; sections?: { label: string; text: string }[] } | undefined;
-        // §6.0（#waiting-failure-minimum）：失败面板的「复制」复制的是错误主句 + 安全诊断（码、步骤、
-        // 插件版本、时间），不是假装成结果的原文；诊断不含上游原文与用户说的话。
-        // 此suite观察Host处理前的插件请求：App身份由Host结果面板注入，普通复制/⌘C
-        // 附可信Host诊断的合同在Host侧voice-host-diagnostics.test.ts真实组件验证。
-        // 插件不能再次把system.tasks可见性失败快照写进正文冒充App版本。
-        // 查上游原文泄漏前先去掉「生成时间」行：时间戳的毫秒可能恰好是 502（例如 …21.502Z），不是泄漏。
-        const failedTextWithoutTime = failedAnswer?.text?.replace(/^生成时间: .*$/m, "") ?? "";
+          .at(-1)?.params as { status?: string; canCopy?: boolean; canContinue?: boolean; errorCode?: string; originalText?: string; text?: string; sections?: { label: string; text: string }[] } | undefined;
+        // §6.0：业务失败字段与正常复制只含可读原因，结构化码供 Host 开发模式诊断使用。
+        // 此suite观察Host处理前的插件请求；技术区及复制门禁由Host真实组件回归验证。
+        // 原文、继续处理入口保留，但原文不能冒充成功结果，失败也不得注入目标应用。
+        const recovery = "当前额度不足。你的内容已保存，补充额度后可以重新发送。";
+        const technicalMarkers = ["诊断信息", "错误码:", "插件版本:", "App 版本:", "Host API:", "当前步骤:", "生成时间:", "SYSTEM_TASK_VISIBLE_SURFACE_REQUIRED", "INVALID_REQUEST", "502", "AGENT_ENGINE"];
         if (
           failedAnswer?.status !== "failed"
           || failedAnswer.canCopy !== true
-          || !failedAnswer.text?.startsWith("当前额度不足。你的内容已保存，补充额度后可以重新发送。\n\nReAI Board Voice 诊断信息")
-          || !failedAnswer.text.includes("错误码: AGENT_ENGINE")
-          || !failedAnswer.text.includes("插件版本: com.reai.voice ")
-          || failedAnswer.text.includes("App 版本: ")
-          || failedAnswer.text.includes("SYSTEM_TASK_VISIBLE_SURFACE_REQUIRED")
-          || !failedAnswer.text.includes("Host API: ")
-          || !failedAnswer.text.includes("当前步骤: Agent 处理")
-          || !failedAnswer.text.includes("生成时间: ")
-          || failedTextWithoutTime.includes("INVALID_REQUEST")
-          || failedTextWithoutTime.includes("502")
-          || !failedAnswer.sections?.some((section) => section.label === "诊断信息" && section.text.includes("错误码: AGENT_ENGINE"))
+          || failedAnswer.canContinue !== true
+          || failedAnswer.errorCode !== "AGENT_ENGINE"
+          || failedAnswer.originalText !== "测试语音命令"
+          || failedAnswer.text !== recovery
+          || !failedAnswer.sections?.some((section) => section.label === "错误" && section.text === recovery)
+          || !failedAnswer.sections?.some((section) => section.label === "原文" && section.text === failedAnswer.originalText)
+          || failedAnswer.sections?.some((section) => technicalMarkers.some((marker) => section.label.includes(marker) || section.text.includes(marker)))
         ) {
-          throw new Error(`Agent 提问失败必须如实呈现，复制内容是主句加安全诊断而不是假结果：${JSON.stringify(failedAnswer)}`);
+          throw new Error(`Agent 提问失败须保留原因、原文和恢复入口，业务正文不带技术诊断且不冒充成功结果：${JSON.stringify(failedAnswer)}`);
         }
         if (
           host.cloudRequests.filter((request) => request.method === "voice.deliver.commit")
@@ -1959,12 +1953,16 @@ export default configuredVoiceSuite({
         Array.from(root.querySelectorAll<HTMLButtonElement>(".ctx-tab"))
           .find((tab) => tab.textContent === "原文")
           ?.click();
-        // 原文栏按 Host 给的句级时间戳逐句标时刻（R12），脚注不再出现。
-        const stamps = Array.from(root.querySelectorAll(".ctx-line .ctx-line-ts")).map(
+        // 主发言只标真实起始秒；展开审计片段保留原始毫秒区间。
+        const stamps = Array.from(root.querySelectorAll(".ctx-utterance-line .ctx-line-ts")).map(
           (node) => node.textContent,
         );
-        if (stamps.length !== 2 || stamps[0] !== "14:03" || stamps[1] !== "14:09") {
-          throw new Error(`原文栏应逐句标真实时刻，实际 ${JSON.stringify(stamps)}`);
+        if (stamps.length !== 2 || stamps[0] !== "14:03:00" || stamps[1] !== "14:09:00") {
+          throw new Error(`原文栏应按发言标真实起始秒，实际 ${JSON.stringify(stamps)}`);
+        }
+        const originalRanges = Array.from(root.querySelectorAll(".ctx-fragments .ctx-line-ts")).map(node => node.textContent);
+        if (JSON.stringify(originalRanges) !== JSON.stringify(["14:03:00.000～14:03:03.200", "14:09:00.000～14:09:01.800"])) {
+          throw new Error(`原始片段应保留真实毫秒区间，实际 ${JSON.stringify(originalRanges)}`);
         }
         if (root.querySelector(".ctx-lines-note")) {
           throw new Error("有句级时间戳时不该再显示「句子之间没有各自的时间戳」脚注");

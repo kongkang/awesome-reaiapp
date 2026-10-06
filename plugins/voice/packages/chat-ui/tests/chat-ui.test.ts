@@ -242,6 +242,21 @@ describe("输入坞（稿 .chat-input-bar）", () => {
     expect(attached).toBe(1);
   });
 
+  test("hideAttach removes the entry while preserving text and microphone interaction", () => {
+    let attached = 0;
+    const { host, composer, sent, toggles } = mount({ hideAttach: true, onAttach: () => attached++ });
+    expect(host.querySelector(".chat-attach")).toBeNull();
+    expect(Array.from(composer.element.children).map(child => child.className)).toEqual(["chat-input", "chat-mic"]);
+    composer.input.value = "synthetic plain text";
+    composer.input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    host.querySelector<HTMLButtonElement>(".chat-mic")!.click();
+    expect(sent).toEqual(["synthetic plain text"]);
+    expect(toggles()).toBe(1);
+    expect(attached).toBe(0);
+    composer.dispose();
+    expect(host.querySelector(".chat-input-bar")).toBeNull();
+  });
+
   test("Enter 发送去空白后的文本，空串不发，输入法合成中的 Enter 不发；本包不替消费方清空", () => {
     const { composer, sent } = mount();
     const enter = () => composer.input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));

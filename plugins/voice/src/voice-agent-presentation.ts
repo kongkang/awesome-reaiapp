@@ -121,21 +121,21 @@ function failingCall(progress: ToolProgress): ToolProgressCall | undefined {
  * 失败原因：已登记的码先给联网工具的专门说法，其次是 Host Agent 码的分类短句，再是落盘时的说明
  * （含旧版卡的原文），都没有就如实说「调用失败」。
  */
-function failureReason(call: ToolProgressCall): string {
+function failureReason(call: ToolProgressCall, developerMode = true): string {
   const code = structuredCode(call.errorCode);
   return (code ? presentAgentToolError(code, { code, message: "" }).message || agentToolCodeDetail(code)
     || agentCodeLabel(code) : "")
-    || call.errorLabel || t("chat.tools.callFailed");
+    || (developerMode ? call.errorLabel : "") || t("chat.tools.callFailed");
 }
 
 /** 摘要行主句：运行中 = 当前步骤；失败 = 哪个工具没完成 + 原因；其余 = 调用了哪些工具。 */
-export function toolProgressLabel(progress: ToolProgress): string {
+export function toolProgressLabel(progress: ToolProgress, developerMode = true): string {
   if (progress.status === "running") {
     const current = progress.calls.filter((call) => call.status === "running").at(-1);
     if (current) return t("chat.tools.running", { name: toolDisplayName(current.tool) });
   }
   const failed = progress.status === "failed" ? failingCall(progress) : undefined;
-  if (failed) return t("chat.tools.failed", { name: toolDisplayName(failed.tool), reason: failureReason(failed) });
+  if (failed) return t("chat.tools.failed", { name: toolDisplayName(failed.tool), reason: failureReason(failed, developerMode) });
   return usedSummary(progress);
 }
 
@@ -155,11 +155,11 @@ function toolSpanMs(calls: readonly ToolProgressCall[]): number | undefined {
  * 摘要行右侧（结束后）：失败态先给错误码；随后只要有失败就写失败次数（不论 Agent 最终是否作答），
  * 再是未确认结束次数与用时。运行中的已用时间由视图给活节点。
  */
-export function toolProgressMeta(progress: ToolProgress): string | undefined {
+export function toolProgressMeta(progress: ToolProgress, developerMode = true): string | undefined {
   if (progress.status === "running") return undefined;
   const parts: string[] = [];
   const failed = progress.status === "failed" ? failingCall(progress) : undefined;
-  if (failed) {
+  if (failed && developerMode) {
     const code = structuredCode(failed.errorCode);
     parts.push(code ? t("chat.tools.code", { code }) : t("chat.tools.noCode"));
   }
@@ -188,8 +188,9 @@ function isToolCard(card: ChatStatusCard | undefined): card is ToolCard {
   return card?.kind === "tool" || card?.kind === "tool-group";
 }
 
-function callNote(call: ToolProgressCall): string {
+function callNote(call: ToolProgressCall, developerMode: boolean): string {
   if (call.status === "unknown") return t("chat.tools.callUnconfirmed");
+  if (!developerMode) return failureReason(call, false);
   const code = structuredCode(call.errorCode);
   return code
     ? t("chat.tools.callError", { reason: failureReason(call), code })
@@ -197,7 +198,7 @@ function callNote(call: ToolProgressCall): string {
 }
 
 /** 明细行：沿用 chat-ui 明细行；显示名、原因随语言切换即时更新（getter 由绑定每次重读）。 */
-function presentCall(call: ToolProgressCall): ChatToolCallEntry {
+function presentCall(call: ToolProgressCall, developerMode: boolean): ChatToolCallEntry {
   const entry: ChatToolCallEntry = {
     ...(call.callId ? { callId: call.callId } : {}),
     tool: call.tool,
@@ -208,7 +209,7 @@ function presentCall(call: ToolProgressCall): ChatToolCallEntry {
     ...(isWebTool(call.tool) ? { icon: "globe" as const } : {}),
   };
   if (call.status === "failed" || call.status === "unknown") {
-    Object.defineProperty(entry, "errorLabel", { get: () => callNote(call), enumerable: true });
+    Object.defineProperty(entry, "errorLabel", { get: () => callNote(call, developerMode), enumerable: true });
   }
   return entry;
 }
@@ -217,7 +218,7 @@ function presentCall(call: ToolProgressCall): ChatToolCallEntry {
  * 把一个回合（一条命令历史）里的全部工具卡并成一条过程折叠，放在第一张工具卡的位置；
  * 其余工具卡消息去掉卡片（没有正文与附件的整条去掉）。没有工具卡时原样返回。
  */
-export function mergeToolProgress(messages: ChatMessage[], entryStatus: EntryStatus): ChatMessage[] {
+export function mergeToolProgress(messages: ChatMessage[], entryStatus: EntryStatus, developerMode = true): ChatMessage[] {
   const cards = messages.map((message) => message.card).filter(isToolCard);
   if (cards.length === 0) return messages;
   const calls: ToolProgressCall[] = [];
@@ -248,10 +249,10 @@ export function mergeToolProgress(messages: ChatMessage[], entryStatus: EntrySta
   const merged: ToolGroupCard = {
     kind: "tool-group",
     status,
-    get label() { return toolProgressLabel(progress); },
-    get meta() { return toolProgressMeta(progress); },
+    get label() { return toolProgressLabel(progress, developerMode); },
+    get meta() { return toolProgressMeta(progress, developerMode); },
     ...(calls.some((call) => isWebTool(call.tool)) ? { icon: "globe" as const } : {}),
-    calls: calls.map(presentCall),
+    calls: calls.map(call => presentCall(call, developerMode)),
     totalCalls,
     failedCalls,
     omittedCalls,

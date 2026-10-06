@@ -34,6 +34,8 @@ export interface AgentTurnStart {
   idempotencyKey: string;
   text: string;
   taskPresentation?: "host" | "caller";
+  /** Only after configuration.attachmentInputVersion === 1 and a ready own-session snapshot. */
+  attachmentInput?: import("./agent-attachments").AgentAttachmentTurnInput;
 }
 export interface AgentTurnRef { sessionId: string; turnId: string }
 export interface AgentToolAttempt {
@@ -91,6 +93,9 @@ export interface AgentServiceEvent extends AgentTurnRef {
   isError?: boolean;
 }
 export interface AgentServiceClient {
+  attachmentUploads?: import("./agent-attachments").AgentAttachmentUploads;
+  /** Purely local. Missing descriptor/method means unsupported; never discovers models. */
+  attachmentAdmission?(options: { schemaVersion: 1; sessionId: string }): Promise<import("./agent-attachments").AgentAttachmentAdmission>;
   /** Wait for an already accepted turn; this never starts or repeats work. */
   waitForTurn(options: AgentTurnRef): Promise<NonNullable<AgentTurnSnapshot["result"]>>;
   startTurn(options: AgentTurnStart): Promise<AgentTurnSnapshot>;

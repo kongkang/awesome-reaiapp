@@ -15,6 +15,28 @@ const terminal = (status = "completed") => ({
   failure: status === "completed" ? null : { code: "AGENT_CANCELLED", kind: "killed" },
 });
 
+test("attachment uploads use owned-session typed lease methods and send keeps the exact input identity", async () => {
+  const part = { kind: "image" as const, name: "synthetic.png", mimeType: "image/png" as const, leaseId: "c".repeat(64), sha256: "d".repeat(64), byteLength: 3 };
+  const admission = { schemaVersion: 1 as const, opaqueBinding: "a".repeat(64), revision: 1, modes: ["image" as const] };
+  const f = await fixture(method => method.endsWith(".upload.start") ? { schemaVersion: 1, leaseId: part.leaseId, chunkBytes: 262144 }
+    : method.endsWith(".upload.finish") ? { schemaVersion: 1, part }
+    : method === "agent.v2.turn.start" ? snapshot("completed", terminal()) : { schemaVersion: 1, ok: true });
+  try {
+    const uploads = f.ctx.agent.attachmentUploads;
+    expect(uploads).toBeDefined();
+    if (!uploads) throw new Error("missing typed attachment uploads");
+    const owned = { schemaVersion: 1 as const, sessionId: reference.sessionId, admission };
+    await uploads.start({ ...owned, name: part.name, mimeType: part.mimeType, byteLength: 3, sha256: part.sha256 });
+    await uploads.chunk({ ...owned, leaseId: part.leaseId, index: 0, base64: "YWJj" });
+    expect((await uploads.finish({ ...owned, leaseId: part.leaseId })).part).toEqual(part);
+    const input = { schemaVersion: 1 as const, admission, parts: [part] };
+    await f.ctx.agent.send({ sessionId: reference.sessionId, turnId: "same-attachment-key", text: "synthetic question", taskPresentation: "host", attachmentInput: input });
+    await uploads.cancel({ ...owned, leaseId: part.leaseId });
+    expect(f.calls.map(call => call.method)).toEqual(["agent.v2.attachment.upload.start", "agent.v2.attachment.upload.chunk", "agent.v2.attachment.upload.finish", "agent.v2.turn.start", "agent.v2.attachment.upload.cancel"]);
+    expect(f.calls[3]?.params).toEqual({ sessionId: reference.sessionId, idempotencyKey: "same-attachment-key", text: "synthetic question", taskPresentation: "host", attachmentInput: input });
+  } finally { await f.dispose(); }
+});
+
 /** Only the methods granted by agent.session@2 exist in this fixture. */
 async function fixture(reply: (method: string, params: any) => unknown = () => ({})) {
   let ctx!: AppContext;

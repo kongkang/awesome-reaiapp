@@ -21,6 +21,7 @@ for (const entry of ["intent", "history-row"] as const) test(`cold hidden mount 
         loadApp: async () => {
             const { default: app } = await import("../src/app?cold-host=" + crypto.randomUUID());
             return { default: { ...app, async activate(ctx: AppContext) {
+                        ctx.environment.get = async () => ({ developerMode: true });
                         const actualRead = ctx.systemTasks.getVersionStatus.bind(ctx.systemTasks);
                         ctx.systemTasks.getVersionStatus = async () => { reads++; readTimes.push(Date.now()); if (!visible)
                             throw { code: "SYSTEM_TASK_VISIBLE_SURFACE_REQUIRED" }; return actualRead(); };

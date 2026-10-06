@@ -50,7 +50,7 @@ function mount(overrides: Partial<VoiceViewState>, extra: Partial<VoiceViewActio
     onLoadReplayAudio: async () => new Blob([new Uint8Array([1])], { type: "audio/wav" }),
     ...extra,
   } as unknown as VoiceViewActions;
-  const state = createDefaultVoiceViewState({ hostVersion: HOST, statusLoad: "loaded", ...overrides });
+  const state = createDefaultVoiceViewState({ developerMode: true, hostVersion: HOST, statusLoad: "loaded", ...overrides });
   const view = mountVoiceView(root, state, actions);
   return {
     root, view, state, copies,
@@ -60,6 +60,27 @@ function mount(overrides: Partial<VoiceViewState>, extra: Partial<VoiceViewActio
 
 const settle = async () => { for (let index = 0; index < 12; index += 1) await Promise.resolve(); await new Promise((r) => setTimeout(r, 5)); };
 const click = (element: Element | null | undefined) => (element as HTMLElement).click();
+
+test("普通用户失败页保留原因和动作，只有明确开发模式显示诊断；关闭立即移除原始信息", async () => {
+  const h = mount({ developerMode: false, statusLoad: "failed", statusLoadError: "请检查麦克风后重试", statusLoadErrorDetail: {
+    code: "VOICE_STATUS_TIMEOUT", step: "refresh", at: new Date().toISOString(), raw: "PRIVATE_RAW_REASON",
+  } });
+  try {
+    expect(h.root.textContent).toContain("请检查麦克风后重试");
+    expect(h.root.querySelector(".voice-diag")).toBeNull();
+    expect(h.root.textContent).not.toContain("VOICE_STATUS_TIMEOUT");
+    h.view.update({ ...h.state, developerMode: true });
+    const toggle = h.root.querySelector(".voice-diag-toggle");
+    expect(toggle).not.toBeNull();
+    click(toggle); await settle();
+    expect(h.root.querySelector(".voice-diag-panel")).not.toBeNull();
+    h.view.update({ ...h.state, developerMode: false });
+    expect(h.root.querySelector(".voice-diag-panel")).toBeNull();
+    expect(h.root.querySelector(".voice-diag-copy")).toBeNull();
+    expect(h.root.textContent).not.toContain("PRIVATE_RAW_REASON");
+    expect(h.root.textContent).toContain("请检查麦克风后重试");
+  } finally { h.view.dispose(); }
+});
 
 function command(overrides: Partial<VoiceCommandHistoryItem>): VoiceCommandHistoryItem {
   return {
@@ -322,7 +343,7 @@ test("录音中的活动行永不弹诊断入口：没有慢阈值，录再久�
 
 test("安静模式只对等待态生效：失败态即使传了 quiet，版本与入口也立刻可见（§6.0 底线）", () => {
   const store = createVoiceDiagnosticsStore();
-  const block = voiceDiagnosticsBlock({
+  const block = voiceDiagnosticsBlock({ developerMode: true,
     key: "unit:failed",
     entry: { state: "failed", step: () => "识别", code: "AI_UNAVAILABLE", sinceMs: 1_000, endMs: 8_000 },
     host: () => HOST,

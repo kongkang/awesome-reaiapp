@@ -5,10 +5,10 @@
 > 工具链合同：本仓库支持矩阵和 SDK/contract 为 `1.24.0`。实际已安装 Host 的支持范围仍须单独核对；源码合同不代表客户端已经发布。
 
 > **本仓库验证入口**：在 `packages/` 安装冻结依赖，运行 `bun run test` 和 `bun run typecheck`。再进入目标 `plugins/<slug>/` 或样例目录，运行其 README 中的测试、类型检查、校验、构建、合同测试和打包命令。
-> 本仓库没有自动执行仓库外 tarball 安装或真实 Host 安装生命周期的入口。这两项验收须单独完成；本地 `file:` 依赖和 Mock Host 通过不能替代独立分发、平台批准或真实安装证据。
+> 本仓库在 `packages/` 提供 `bun run verify:pack`，把工具链 tarball 安装到仓库外 fixture 并验证 CLI、语言资源和 SDK 上传合同。真实 Host 安装生命周期仍须单独验收；本地 `file:` 依赖和 Mock Host 不能替代平台批准或真实安装证据。
 
 >
-> 最后核对：2026-10-03（本仓库合同与命令入口）
+> 最后核对：2026-10-06（本仓库同步后的合同与命令入口）
 >
 > 接口细节：[Driver V2 插件接口参考 v1](plugin-api-reference-v1.md)
 >
@@ -892,9 +892,8 @@ Service/headless App 也不必占侧边栏，统一在“更多/已安装 App”
   声明了却装不上等于给用户一个假入口；
 - 新 Host/CLI 合同按完整三段稳定版本的精确值（含裸版本）、`^`、`~`、`>`、`>=`
   计算下界；多个条件取最高下界，`<` / `<=` 不提供下界。缺位、通配、预发布和 OR
-  语法仍不接受。**本仓当前 CLI 尚未包含精确值/caret/tilde 的这项修复**：声明
-  `agentFeatures` 时仍应使用 `>=1.23.0 <2.0.0` 这类带显式比较器下界的范围，
-  并验证所需最低版本及当前 Host 兼容；本次文档更新不改变 validator。
+  语法仍不接受。本仓 CLI 已同步此项校验；整个范围仍须覆盖目标 Host，
+  并满足 Agent 功能的 `1.23.0` 最低版本。
 - `id` 匹配 `^[a-z][a-z0-9-]*$`、≤64 字节（与 `featureRef` 的引用域一致）且在插件内唯一、
   发布后不复用；`name`（≤48 字符）是给用户看的中文说明；
 - `promptTemplate` 是**参数化模板**（方案 B）：`{slot}` 槽位必须逐个在 `promptParams` 登记
@@ -988,9 +987,9 @@ bun packages/cli/src/cli.ts pack          <appDir> --out <appDir>/my-app-1.0.0.r
 类型、长度和控制字符校验。
 用户授权、拒绝和持久化是 Host 责任，必须在真实 Driver V2 中做最后验证。
 
-**工具链版本边界（2026-10-06）**：以下是新 test-kit 的合同说明。本仓库当前 test-kit 尚未包含
-`networkHandler`、`networkUploadNow` 或分块上传模拟；需独立同步、验证工具链后才能使用，
-仅 SDK 的 `1.24.0` 版本号不能证明测试工具具备这些能力。
+**工具链版本边界（2026-10-06）**：本仓 test-kit 已同步 `networkHandler`、
+`networkUploadNow` 和分块上传模拟。SDK 的版本号仍为 `1.24.0`，
+使用这些增量时应核对源码交付记录，不能仅凭同版本号推断安装包内容。
 
 SDK 1.24 的 `brokerFetch` 正文超过512KiB时，新 Mock Host 支持 `http.upload.start/chunk/finish/cancel`。
 它检查 Manifest 的 `http.fetch@1` 和 endpoint，按公开支持矩阵限制正文52MiB、分块256KiB、每实例

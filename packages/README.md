@@ -21,6 +21,7 @@ cd packages
 bun install --frozen-lockfile --ignore-scripts
 bun run test
 bun run typecheck
+bun run verify:pack
 ```
 
 `test` 运行 SDK、CLI、语言工具、测试包、Agent UI 和 fixture 的测试，并对安装探针 fixture 执行校验、构建与合同测试。`typecheck` 检查 SDK、CLI、语言工具、测试包和 Agent UI。具体命令以本目录 `package.json` 为准。
@@ -29,7 +30,7 @@ bun run typecheck
 
 ## 分发与验收边界
 
-仓库内 `file:` 和 workspace 依赖用于本地开发。它们不证明 npm registry 可用，也不证明仓库外 tarball 安装通过。独立分发需要针对完整工具链和最终输入另行验证。
+仓库内 `file:` 和 workspace 依赖用于本地开发。`verify:pack` 将 SDK、合同、测试包及两种 CLI 的 tarball 安装到仓库外 fixture，验证类型、上传、语言资源、校验、构建和打包。它不访问生产服务，也不证明 npm registry 发布或真实 Host 安装完成。
 
 Mock Host 合同测试、源码审查、平台批准、真实 Host 安装、用户授权和商店发布是不同状态。受控能力被拒绝时，应补齐合法审核证据；不能通过放宽合同或复用旧批准记录完成打包。
 

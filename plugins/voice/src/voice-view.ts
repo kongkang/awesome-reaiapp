@@ -1,7 +1,7 @@
-import { cloudAccountPriceLabel } from "./cloud-pricing";
+import type { PreparedVoiceAttachment, VoiceAttachmentTarget } from "./voice-attachment-input";
 import { selectedCloudOption, validCloudOptionId } from "./cloud-selection";
 import { voiceCloudFailureMessage } from "./voice-user-errors";
-import { contextCharacterCount, contextTime, hasUnfinishedContextStatus, isEmptyContextRecording, isEmptyContextText, projectContextSentences } from "./context-display";
+import { contextCharacterCount, contextTime, hasUnfinishedContextStatus, isEmptyContextRecording, isEmptyContextText, isContextFiller, projectContextUtterances } from "./context-display";
 import { TRANSLATION_LANGUAGES, translationTarget, translationLabel, type TranslationTarget } from "./voice-translation";
 import { t, bindText, bindAttribute, localizedTextNode, releaseLocaleBindings, readText, onVoiceLocaleChange, voiceLocale, type TextSource } from "./voice-i18n";
 import type {
@@ -167,6 +167,9 @@ export interface VoiceView {
 }
 
 export interface VoiceViewActions {
+  onPrepareAttachments?(conversation?: VoiceAgentConversationRef): Promise<VoiceAttachmentTarget>;
+  onUploadAttachment?(file: File, target: VoiceAttachmentTarget, signal: AbortSignal): Promise<PreparedVoiceAttachment>;
+  onReleaseAttachment?(file: PreparedVoiceAttachment): Promise<void>;
   /** 用户打开历史详情时重试可见 Surface 的 Host 版本读取；不由 render 触发。 */
   onOpenHistory?(): void;
   onCopyText?(text: string): Promise<void>;
@@ -239,7 +242,7 @@ export interface VoiceViewActions {
    * 结果落命令历史与答案面板，失败如实回传给视图原地展示。
    */
   /** 返回这次运行的精确 taskId，详情页据此等待自己的新条目。 */
-  onSendCommandFollowUp(text: string, conversation?: VoiceAgentConversationRef): Promise<string>;
+  onSendCommandFollowUp(text: string, conversation?: VoiceAgentConversationRef, attachments?: readonly PreparedVoiceAttachment[]): Promise<string>;
   /** Stop only this command and wait for its terminal state before re-enabling input. */
   onCancelCommand?(taskId: string): Promise<void>;
   onRetryAgentRequest?(taskId: string): Promise<string>;
@@ -377,6 +380,7 @@ export function mountVoiceView(
     entry: VoiceDiagnosticEntry,
     extra: { slowAfterMs?: number; quiet?: boolean; className?: string } = {},
   ): HTMLElement => voiceDiagnosticsBlock({
+    developerMode: state.developerMode,
     key,
     entry,
     host: () => state.hostVersion,
@@ -719,7 +723,10 @@ export function mountVoiceView(
     isActive: () => page === "chat",
     render: () => render(),
     actions: {
-      onSendCommandFollowUp: (text, conversation) => actions.onSendCommandFollowUp(text, conversation),
+      onPrepareAttachments: actions.onPrepareAttachments,
+      onUploadAttachment: actions.onUploadAttachment,
+      onReleaseAttachment: actions.onReleaseAttachment,
+      onSendCommandFollowUp: (text, conversation, attachments) => actions.onSendCommandFollowUp(text, conversation, attachments),
       onCancelCommand: actions.onCancelCommand,
       onRetryAgentRequest: actions.onRetryAgentRequest,
       onRefreshConversationBackends: actions.onRefreshConversationBackends,
@@ -2669,7 +2676,7 @@ export function mountVoiceView(
     };
     const timed = item.sentences ?? [];
     if (timed.length > 0) {
-      const blocks = projectContextSentences(item);
+      const blocks = projectContextUtterances(item);
       // 分散的多个空块只是审计素材，各起一条「无内容」只会刷屏：合并成一条折叠，
       // 位置取首个空块；区间标题只在仍剩单个空块时保留，跨块拼区间会撒谎。
       const emptyBlocks = blocks.filter((block) => block.empty);
@@ -2684,7 +2691,19 @@ export function mountVoiceView(
       let mergedEmptyPlaced = false;
       for (const block of blocks) {
         if (!block.empty) {
-          for (const sentence of block.sentences) lines.append(rawLine(sentence.text, contextTime(item.wallStartMs + sentence.startMs) ? clockTime(item.wallStartMs + sentence.startMs) : ""));
+          const stamp = block.startMs === undefined ? "" : contextTime(block.startMs);
+          const fragments = disclosure(`${block.filler ? "filler" : "fragments"}:${block.indices.join(",")}`, () => block.filler
+            ? `${stamp ? stamp + " " : ""}${t("view.contextFillerFragments", { count: block.sentences.length })}`
+            : t("view.contextSourceFragments", { count: block.sentences.length }));
+          fragments.classList.add("ctx-fragments");
+          if (!block.filler) {
+            const line = rawLine(block.text, stamp);
+            line.classList.add("ctx-utterance-line");
+            lines.append(line);
+          }
+          for (const sentence of block.sentences) fragments.append(rawLine(sentence.text,
+            `${contextTime(item.wallStartMs + sentence.startMs, true)}～${contextTime(item.wallStartMs + sentence.endMs, true)}`));
+          lines.append(fragments);
           continue;
         }
         if (mergedEmpty) {
@@ -2711,12 +2730,20 @@ export function mountVoiceView(
         box.append(rawLine(item.transcriptText ?? "", ""));
         lines.append(box);
       } else {
-        splitTranscriptLines(transcript).forEach((sentence, index) => {
+        (item.transcriptText ?? "").split(/\r?\n/u).filter(sentence => sentence.trim().length > 0).forEach((sentence, index) => {
           if (!hasUnfinishedContextStatus(item) && isEmptyContextText(sentence)) {
             const box = disclosure(`legacy:${index}`, () => t("view.contextNoContent"));
             box.append(rawLine(sentence, ""));
             lines.append(box);
-          } else lines.append(rawLine(sentence, index === 0 ? clockTime(item.wallStartMs) : ""));
+          } else if (!hasUnfinishedContextStatus(item) && isContextFiller(sentence)) {
+            const box = disclosure(`legacy-filler:${index}`, () => t("view.contextFillerFragments", { count: 1 }));
+            box.append(rawLine(sentence, ""));
+            lines.append(box);
+          } else {
+            const line = rawLine(sentence, index === 0 ? contextTime(item.wallStartMs) : "");
+            line.classList.add("ctx-utterance-line");
+            lines.append(line);
+          }
         });
       }
       pane.append(textEl("p", "ctx-lines-note", () => t("view.sentencesFollowTheTranscriptSSegmentationOnly")));
@@ -3445,10 +3472,8 @@ export function mountVoiceView(
         unavailable.disabled = true;
         select.append(unavailable);
       }
-      for (const model of models) select.append(option(() => {
-        const price = cloudAccountPriceLabel(model);
-        return price ? `${model.label} · ${price}` : model.label;
-      }, model.id));
+      // 设置页只列模型名称，不展示价格（2026-10-06 用户裁定）。
+      for (const model of models) select.append(option(() => model.label, model.id));
       select.value = selected?.id ?? (state.featureSettings.cloudModelId || "cloud-unavailable");
       select.disabled = !!state.cloudModelsLoading || models.length === 0;
       select.setAttribute("aria-busy", String(!!state.cloudModelsLoading));
@@ -3460,7 +3485,7 @@ export function mountVoiceView(
       card.append(settingsRow(
         () => t("view.cloudModel"),
         () => state.cloudModelsLoading ? t("view.cloudModelsLoading")
-          : selected ? cloudAccountPriceLabel(selected, state.featureSettings.cloudModelBillingPolicy === "free-only") ?? t("view.cloudOptionSaved")
+          : selected ? (state.featureSettings.cloudModelBillingPolicy === "free-only" ? t("view.cloudModelFreeOnly") : t("view.cloudOptionSaved"))
           : models.length === 0 && validCloudOptionId(state.featureSettings.cloudModelId)
             ? t("view.cloudSelectionRetained") : t("view.cloudDefaultUnavailable"),
         selectShell,

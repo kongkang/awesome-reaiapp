@@ -249,9 +249,9 @@ app-private + yolo 开放，与 `run` 一样需要 `local.terminal.exec@1`；这
 
 ## 附件输入 v1（候选合同，Voice 命令限定）
 
-截至 2026-10-06，本节为尚未发布的实现候选合同。本仓库现有 SDK 尚未提供
-`attachmentAdmission` / `attachmentInput` 类型；文档更新不新增能力或批准。正式工具链、
-签名发布、真实 Host 与模型视觉验收须分别完成。
+截至 2026-10-06，本仓 SDK 与 Voice 源码已同步 `attachmentAdmission` /
+`attachmentInput` 合同。Voice `2.14.5-dev.3` 仍是未送审的源码候选；
+平台批准、签名发布、真实 Host 与模型视觉验收须分别完成。
 
 仅当 Host 明确返回 `configuration.attachmentInputVersion === 1`，才可使用该合同。
 当前限定 `com.reai.voice` 的 `featureRef: "command"`、调用者所属的 v2 持久会话；

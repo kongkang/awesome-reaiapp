@@ -33,6 +33,21 @@ export function sourceApprovalFindings(manifest: Manifest, legacy: Finding[]): F
       && (approval.version === manifest.version
         || (typeof approval.packageSha256 === "string" && !perVersionReviewed))))
     && approval.approvedHostCapabilities.includes(capability));
+  const checks = gatedSourceChecks(manifest);
+  // Recompute both legacy denials and legacy appId-only successes. Do not erase
+  // unrelated findings, unavailable capabilities, or schema errors.
+  const pointers = new Set(checks.map(check => check.pointer));
+  return [
+    ...legacy.filter(finding => finding.code !== "APP_CAPABILITY_NOT_GRANTED" || !pointers.has(finding.pointer)),
+    ...checks.filter(check => !approved(check.capability)).map(check => ({
+      code: "APP_CAPABILITY_NOT_GRANTED" as const, pointer: check.pointer,
+      detail: `${check.capability} requires an applicable source review approval`,
+    })),
+  ];
+}
+
+/** Same gated declarations for normal policy checks and non-authorizing byte calculation. */
+export function gatedSourceChecks(manifest: Manifest): { pointer: string; capability: string }[] {
   const checks: { pointer: string; capability: string }[] = [];
   (manifest.requires?.hostCapabilities ?? []).forEach((capability, index) => {
     if (!matrix.hostCapabilities.granted.includes(capability)
@@ -47,14 +62,5 @@ export function sourceApprovalFindings(manifest: Manifest, legacy: Finding[]): F
       checks.push({ pointer: `runtime.components[${index}].activation`, capability: `activation.${activation}@1` });
     }
   });
-  // Recompute both legacy denials and legacy appId-only successes. Do not erase
-  // unrelated findings, unavailable capabilities, or schema errors.
-  const pointers = new Set(checks.map(check => check.pointer));
-  return [
-    ...legacy.filter(finding => finding.code !== "APP_CAPABILITY_NOT_GRANTED" || !pointers.has(finding.pointer)),
-    ...checks.filter(check => !approved(check.capability)).map(check => ({
-      code: "APP_CAPABILITY_NOT_GRANTED" as const, pointer: check.pointer,
-      detail: `${check.capability} requires an applicable source review approval`,
-    })),
-  ];
+  return checks;
 }

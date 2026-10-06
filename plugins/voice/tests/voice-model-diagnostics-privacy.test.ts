@@ -34,7 +34,7 @@ function mount(overrides: Partial<VoiceViewState>) {
   const actions = new Proxy({ onCopyText: async (text: string) => { copies.push(text); } } as Record<string, unknown>, {
     get: (target, key) => target[key as string] ?? (async () => undefined),
   }) as unknown as VoiceViewActions;
-  const state = createDefaultVoiceViewState({ hostVersion: { state: "ready", version: "1.0.0-rc.1" }, statusLoad: "loaded", ...overrides });
+  const state = createDefaultVoiceViewState({ developerMode: true, hostVersion: { state: "ready", version: "1.0.0-rc.1" }, statusLoad: "loaded", ...overrides });
   const view = mountVoiceView(root, state, actions);
   return { root, copies, view };
 }

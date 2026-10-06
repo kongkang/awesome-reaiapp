@@ -199,3 +199,12 @@ test("native receipt is saved before intent is forgotten; a storage failure pres
   expect(stored.get("task").request.idempotencyKey).toBe("task");
   expect(waits).toBe(0);
 });
+
+test("typed attachment ACK retries preserve exact admission and lease identity; resume never starts work",async()=>{
+ const attachmentInput={schemaVersion:1 as const,admission:{schemaVersion:1 as const,opaqueBinding:'a'.repeat(64),revision:3,modes:['image' as const]},parts:[{kind:'image' as const,name:'synthetic.png',mimeType:'image/png' as const,leaseId:'b'.repeat(64),sha256:'c'.repeat(64),byteLength:200}]};
+ const submitted:any[]=[];let attempts=0;
+ const turns=createVoiceAgentTurns({startTurn:async(request:any)=>{submitted.push(structuredClone(request));if(++attempts===1)throw new TypeError('lost ACK');return receipt;},events:async()=>({...receipt,events:[],gap:false,nextSequence:0}),waitForTurn:async()=>result} as any);
+ await turns.send({sessionId:ref.sessionId,turnId:'original',text:'image question',attachmentInput});
+ expect(submitted).toHaveLength(2);expect(submitted[0]).toEqual(submitted[1]);expect(submitted[0].attachmentInput).toEqual(attachmentInput);
+ await turns.send({sessionId:ref.sessionId,turnId:'resume',text:'ignored',resume:ref});expect(submitted).toHaveLength(2);
+});

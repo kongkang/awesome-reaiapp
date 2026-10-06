@@ -1,25 +1,29 @@
 {
   "name": "reai-voice-app",
-  "version": "2.14.4-rc.3",
+  "version": "2.14.5-dev.3",
   "private": true,
   "type": "module",
   "reaiApp": {
     "entry": "src/app.ts"
   },
   "scripts": {
-    "test": "bun test --pass-with-no-tests tests packages/chat-ui/tests",
+    "test": "bun run prepare:documents && bun test --pass-with-no-tests tests packages/chat-ui/tests",
     "typecheck": "tsc --noEmit && tsc --noEmit -p packages/chat-ui",
-    "build": "reai-app-i18n build .",
+    "build": "bun run prepare:documents && reai-app-i18n build .",
     "validate": "reai-app-i18n validate .",
     "test:contract": "reai-app contract-test . --host-api 1.23",
-    "pack": "reai-app-i18n pack . --out voice-2.14.4-rc.3.reaiapp",
+    "pack": "bun run prepare:documents && reai-app-i18n pack . --out voice-2.14.5-dev.3.reaiapp",
     "check:submission": "bun ../../scripts/plugin-submission.ts check .",
-    "pack:submission": "bun ../../scripts/plugin-submission.ts pack . --out voice-2.14.4-rc.3-submission.reaiapp",
-    "manifest:agent-features": "bun scripts/sync-agent-features.ts"
+    "pack:submission": "bun run prepare:documents && bun ../../scripts/plugin-submission.ts pack . --out voice-2.14.5-dev.3-submission.reaiapp",
+    "manifest:agent-features": "bun scripts/sync-agent-features.ts",
+    "prepare:documents": "bun scripts/prepare-document-assets.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",
-    "markdown-it": "15.0.2"
+    "fflate": "0.8.3",
+    "markdown-it": "15.0.2",
+    "pdfjs-dist": "6.3.289",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.0.0",

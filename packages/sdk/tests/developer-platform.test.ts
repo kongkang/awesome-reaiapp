@@ -13,7 +13,7 @@ import {
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-test("developer.platform typed client 只编码六个固定 Bridge 方法与最小参数", async () => {
+test("developer.platform typed client 只编码九个固定 Bridge 方法与最小参数", async () => {
   const requests: Array<{ method: string; params: unknown }> = [];
   const handlers = new Set<(message: HostMessage) => void>();
   const bridge: HostBridge = {
@@ -76,6 +76,21 @@ test("developer.platform typed client 只编码六个固定 Bridge 方法与最�
     teamId: "11111111-1111-4111-8111-111111111111",
     managementClientId: "22222222-2222-4222-8222-222222222222",
   });
+  await context!.developerPlatform.listTesters({
+    teamId: "11111111-1111-4111-8111-111111111111",
+    productId: "44444444-4444-4444-8444-444444444444",
+  });
+  await context!.developerPlatform.addTester({
+    teamId: "11111111-1111-4111-8111-111111111111",
+    productId: "44444444-4444-4444-8444-444444444444",
+    userId: "55555555-5555-4555-8555-555555555555",
+    idempotencyKey: "add-tester-1",
+  });
+  await context!.developerPlatform.removeTester({
+    teamId: "11111111-1111-4111-8111-111111111111",
+    productId: "44444444-4444-4444-8444-444444444444",
+    testerUserId: "55555555-5555-4555-8555-555555555555",
+  });
 
   expect(DEVELOPER_PLATFORM_CAPABILITY).toBe("developer.platform@1");
   expect(DEVELOPER_PLATFORM_REQUEST_METHODS).toEqual([
@@ -85,6 +100,10 @@ test("developer.platform typed client 只编码六个固定 Bridge 方法与最�
     "developer.platform.products.list",
     "developer.platform.products.create",
     "developer.platform.clients.get",
+    "developer.platform.testers.list",
+    "developer.platform.testers.add",
+    "developer.platform.testers.remove",
+    "developer.platform.workflow",
   ]);
   expect(requests).toEqual([
     { method: RequestMethod.DeveloperPlatformContextGet, params: {} },
@@ -122,6 +141,30 @@ test("developer.platform typed client 只编码六个固定 Bridge 方法与最�
         managementClientId: "22222222-2222-4222-8222-222222222222",
       },
     },
+    {
+      method: RequestMethod.DeveloperPlatformTestersList,
+      params: {
+        teamId: "11111111-1111-4111-8111-111111111111",
+        productId: "44444444-4444-4444-8444-444444444444",
+      },
+    },
+    {
+      method: RequestMethod.DeveloperPlatformTestersAdd,
+      params: {
+        teamId: "11111111-1111-4111-8111-111111111111",
+        productId: "44444444-4444-4444-8444-444444444444",
+        userId: "55555555-5555-4555-8555-555555555555",
+        idempotencyKey: "add-tester-1",
+      },
+    },
+    {
+      method: RequestMethod.DeveloperPlatformTestersRemove,
+      params: {
+        teamId: "11111111-1111-4111-8111-111111111111",
+        productId: "44444444-4444-4444-8444-444444444444",
+        testerUserId: "55555555-5555-4555-8555-555555555555",
+      },
+    },
   ]);
 });
 
@@ -136,5 +179,6 @@ test("developer.platform backend 状态错误码集合固定", () => {
     "DEVELOPER_PLATFORM_CONFLICT",
     "DEVELOPER_PLATFORM_RATE_LIMITED",
     "DEVELOPER_PLATFORM_BACKEND_REJECTED",
+    "DEVELOPER_PLATFORM_TESTER_NOT_TEAM_MEMBER",
   ]);
 });

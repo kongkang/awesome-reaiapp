@@ -129,6 +129,13 @@ test("different actual package digest rejects without replacing an existing arti
   expect(readFileSync(output, "utf8")).toBe("previous immutable package");
 });
 
+test("changing compression cannot reuse SOURCE evidence bound to STORE bytes", async () => {
+  const h = fixture(); await bindActualPackage(h);
+  const output = join(h.root, "immutable.reaiapp"); writeFileSync(output, "previous immutable package");
+  await expect(packApp(h.root, output, false, h.evidence, { compression: "deflate" })).rejects.toThrow("package digest");
+  expect(readFileSync(output, "utf8")).toBe("previous immutable package");
+});
+
 test("post-build checks reject a source mutation during bundling", async () => {
   const h = fixture(); const spawn = Bun.spawn;
   const hook = spyOn(Bun, "spawn").mockImplementation(((...args: any[]) => {

@@ -39,6 +39,7 @@ async function harness(id = "transcribe-default", engine = "local", fresh = fals
   const sentPolicies: unknown[] = [];
   const original = internals.handleRequest.bind(host);
   internals.handleRequest = async (method, params) => {
+    if (method === "environment.get") return { developerMode: true };
     if (method === "ai.models.list") {
       listCalls++;
       const snapshot = structuredClone(models), gate = listGate; listGate = undefined;
@@ -459,6 +460,35 @@ const accountModel = (policy: "free" | "metered", id = "transcribe-account") => 
   id, kind: "transcribe" as const, label: "Current account model", isDefault: true,
   pricingContext: "current-account" as const, billingPolicy: policy,
 });
+
+for (const locale of ["zh", "en"] as const) {
+  test(`request-text missing cloud selection preserves the registered code and specific message: ${locale}`, async () => {
+    const h = await harness("transcribe-default", "cloud");
+    const serviceId = "com.reai.voice/request-text@1";
+    const input = { requestId: `${Date.now()}:${crypto.randomUUID()}` };
+    const caller = { appId: "com.example.consumer", surfaceMountId: "consumer", runtimeSessionId: "consumer-runtime", accountGeneration: "voice-cloud-test-account" };
+    try {
+      h.host.setLocale(locale);
+      await tick();
+      const result = await h.host.invokeService(serviceId, "request-text", input, caller);
+      expect(result).toMatchObject({ ok: false, error: {
+        code: "com.reai.voice/CLOUD_MODEL_SELECTION_REQUIRED",
+        // The registered service selects its resource again. It does not pass the original error message through.
+        userMessage: t("app.chooseCloudModelBeforeTranscribing"),
+        retryable: false,
+      } });
+      const status = await h.host.invokeService(serviceId, "status", input, caller);
+      expect(status).toMatchObject({ ok: true, output: {
+        phase: "failed", captureStarted: false,
+        errorCode: "com.reai.voice/CLOUD_MODEL_SELECTION_REQUIRED",
+      } });
+      expect(h.host.voiceInputRequests.some(r => r.method === "voice.toggle")).toBeFalse();
+      expect(h.sentModels).toEqual([]);
+      expect(h.featureId()).toBe("transcribe-default");
+      expect(h.engineValue()).toBe("cloud");
+    } finally { await h.close(); }
+  });
+}
 test("account default at zero and later metered executes ordinary billing without changing saved intent", async () => {
   const h = await harness("transcribe-default", "cloud", false, false, false, false, false, [accountModel("free")]);
   try {

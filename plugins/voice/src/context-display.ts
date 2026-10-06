@@ -1,4 +1,5 @@
 import type { VoiceRecordingSegment, VoiceRecordingSentence } from "@reai/app-sdk/v1";
+import { isConfirmationUtterance, isPureFillerUtterance } from "./voice-utterance";
 
 /** Deliberately narrow: ambiguous punctuation (?!, quotes, operators) is preserved. */
 export function isEmptyContextText(text: string): boolean {
@@ -11,8 +12,10 @@ export function contextCharacterCount(text: string): number {
 }
 
 export function hasUnfinishedContextStatus(item: VoiceRecordingSegment): boolean {
-  const status = (item as VoiceRecordingSegment & { transcriptionStatus?: string }).transcriptionStatus;
-  return status !== undefined && status !== "complete";
+  const status = item.transcriptStatus !== undefined
+    ? item.transcriptStatus
+    : (item as VoiceRecordingSegment & { transcriptionStatus?: string }).transcriptionStatus;
+  return status != null && status !== "complete";
 }
 
 export function isEmptyContextRecording(item: VoiceRecordingSegment): boolean {
@@ -66,6 +69,62 @@ export function projectContextSentences(item: VoiceRecordingSegment): ContextDis
     }
   });
   return blocks;
+}
+
+export interface ContextUtteranceBlock extends ContextDisplayBlock {
+  text: string;
+  filler: boolean;
+}
+
+/** Display joining only: never infer speaker identity or modify Host-owned fragments. */
+export function projectContextUtterances(item: VoiceRecordingSegment): ContextUtteranceBlock[] {
+  const unfinished = hasUnfinishedContextStatus(item);
+  const blocks: ContextDisplayBlock[] = [];
+  for (const block of projectContextSentences(item)) {
+    const previous = blocks.at(-1);
+    const gap = block.startMs !== undefined && previous?.endMs !== undefined ? block.startMs - previous.endMs : -1;
+    // Every block contains a contiguous slice of the unchanged source sequence.
+    // Range membership avoids repeatedly searching an ever-growing indices array.
+    const firstIndex = previous?.indices[0];
+    const lastIndex = block.indices.at(-1)!;
+    const intersectsOther = previous?.startMs !== undefined && block.endMs !== undefined
+      && (item.sentences ?? []).some((sentence, index) => (index < firstIndex! || index > lastIndex)
+        && Number.isSafeInteger(sentence.startMs) && Number.isSafeInteger(sentence.endMs)
+        && item.wallStartMs + sentence.startMs < block.endMs!
+        && item.wallStartMs + sentence.endMs > previous.startMs!);
+    if (!unfinished && !block.empty && previous && !previous.empty && gap >= 0 && gap <= 1500
+      && previous.startMs !== undefined && block.endMs !== undefined
+      && sameDay(previous.startMs, block.endMs) && !intersectsOther) {
+      previous.indices.push(...block.indices);
+      previous.sentences.push(...block.sentences);
+      previous.endMs = block.endMs;
+    } else blocks.push({ ...block, indices: [...block.indices], sentences: [...block.sentences] });
+  }
+  return blocks.map(block => ({
+    ...block,
+    text: unfinished ? block.sentences.map(s => s.text).join("\n") : contextUtteranceText(block.sentences.map(s => s.text)),
+    filler: !unfinished && !block.empty && isContextFiller(block.sentences.map(s => s.text).join("\n")),
+  }));
+}
+
+export function isContextFiller(text: string): boolean {
+  return isPureFillerUtterance(text) && !isConfirmationUtterance(text);
+}
+
+/** Collapse runs of filler fragments, preserving a single filler inside useful speech. */
+export function contextUtteranceText(fragments: readonly string[]): string {
+  const texts: string[] = [];
+  for (let index = 0; index < fragments.length; index++) {
+    const text = fragments[index]!.trim();
+    if (isPureFillerUtterance(text)) {
+      let end = index + 1;
+      while (end < fragments.length && isPureFillerUtterance(fragments[end]!)) end++;
+      texts.push(text + (end > index + 1 ? "…" : ""));
+      index = end - 1;
+    } else texts.push(text);
+  }
+  return texts.reduce((joined, text) => joined + (/[A-Za-z0-9][.,!?;:…'"）)\]]*$/u.test(joined)
+    && /^[A-Za-z0-9("']/u.test(text) ? " " : "") + text, "");
 }
 
 /** Main UI stops at seconds; expanded audit retains exact milliseconds. */

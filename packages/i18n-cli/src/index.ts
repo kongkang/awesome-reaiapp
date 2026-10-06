@@ -5,6 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import { BuildError, PackError, type Finding } from "@reai/app-cli";
 export { buildApp } from "./build";
 import { createArchive } from "./pack";
+import { readPackageZip, type PackOptions } from "./archive";
+export { parseCompression, type Compression, type PackOptions } from "./archive";
 import { validateManifest } from "./gateway";
 export { validateManifest } from "./gateway";
 import { validateLocaleBytes, validateLocaleDirectory } from "./resources";
@@ -24,20 +26,8 @@ function preflight(root: string, requireI18n: boolean, sourceReview?: SourceRevi
   if(findings.length)throw new BuildError("Plugin language validation failed",findings);
 }
 
-/** Parse the deterministic store-only ZIP emitted by the frozen builder, checking exact output bytes. */
-export function packedFiles(zip: Buffer): Map<string, Uint8Array> {
-  const files=new Map<string,Uint8Array>();let at=0;
-  while(at+4<=zip.length&&zip.readUInt32LE(at)===0x04034b50){
-    if(at+30>zip.length||zip.readUInt16LE(at+8)!==0||(zip.readUInt16LE(at+6)&0x0009)!==0)throw new PackError("Unsupported or truncated package entry");
-    const size=zip.readUInt32LE(at+18),nameLength=zip.readUInt16LE(at+26),extraLength=zip.readUInt16LE(at+28),start=at+30+nameLength+extraLength;
-    if(start+size>zip.length||zip.readUInt32LE(at+22)!==size)throw new PackError("Invalid package entry size");
-    const name=new TextDecoder("utf-8",{fatal:true}).decode(zip.subarray(at+30,at+30+nameLength));
-    if(files.has(name))throw new PackError("Duplicate package entry");
-    files.set(name,zip.subarray(start,start+size));at=start+size;
-  }
-  if(!files.has("app.manifest.json")||at+4>zip.length||zip.readUInt32LE(at)!==0x02014b50)throw new PackError("Invalid package directory");
-  return files;
-}
+/** Read bounded normalized STORE/Deflate resources with exact directory and CRC verification. */
+export function packedFiles(zip: Buffer): Map<string, Uint8Array> { return readPackageZip(zip); }
 /** Build Manifest and every actual ZIP resource must describe the same immutable bytes. */
 export function verifyPackagedResources(files: Map<string, Uint8Array>): Record<string, unknown> {
   const decode = (path:string) => {
@@ -55,11 +45,11 @@ export function verifyPackagedResources(files: Map<string, Uint8Array>): Record<
   if(seen.size!==files.size-1)throw new PackError("Package resource whitelist differs");
   return manifest;
 }
-export async function packApp(root: string, outputPath: string, requireI18n = true, sourceReview?: SourceReviewEvidence) {
+export async function packApp(root: string, outputPath: string, requireI18n = true, sourceReview?: SourceReviewEvidence, options: PackOptions = {}) {
   preflight(root,requireI18n,sourceReview);
   const output=resolve(outputPath),temp=mkdtempSync(join(dirname(output),".reai-i18n-"));
   try {
-    const { archive, ...result }=await createArchive(root,requireI18n,sourceReview);
+    const { archive, ...result }=await createArchive(root,requireI18n,sourceReview,options);
     const files=packedFiles(archive);
     const manifest=verifyPackagedResources(files);
     const findings=[...validateManifest(manifest,sourceReview,root),...validateLocaleBytes(manifest,files,requireI18n)];

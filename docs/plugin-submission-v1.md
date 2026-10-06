@@ -153,11 +153,11 @@ bun scripts/plugin-submission.ts check plugins/code-worker --package /absolute/o
 正规例：`bun scripts/plugin-submission.ts pack plugins/voice --out <path>.reaiapp --form-version <version> --source-review <evidence.json>`。成功 `.submission.json` 标明本地证据摘要、runtimeGrant:false、platformApproval:false。上传须使用真实CASfileId、当前报价、冻结包，审核后的批准必须绑定精确摘要；不能据源码记录启动未批准候选。
 
 
-## 8. 可复现压缩与待审字节（工具链候选）
+## 8. 可复现压缩与待审字节
 
-2026-10-06 文档更新：以下为新的提交工具合同。本仓库当前 `scripts/plugin-submission.ts`
-尚未支持 `--compression`，也没有 `scripts/source-review-bytes.ts`；不能在现有工具上执行
-这些候选入口，或把文档当作工具链已更新。既有 STORE 路径与校验继续适用。
+2026-10-06 源码同步：`scripts/plugin-submission.ts` 与 modern CLI 已支持
+`--compression deflate`，`scripts/source-review-bytes.ts` 提供独立离线待审字节计算。
+默认 STORE 路径与校验继续适用；这些工具不产生平台批准或发布状态。
 
 支持该合同的 modern 工具链默认仍使用 STORE。显式 `--compression deflate` 仅用于 pack，
 check 自动识别格式。压缩固定 `fflate 0.8.3`、`{ level: 9, mem: 8 }`、条目顺序、时间与
@@ -178,3 +178,14 @@ check 自动识别格式。压缩固定 `fflate 0.8.3`、`{ level: 9, mem: 8 }`�
 `runtimeGrant:false`、`platformApproval:false`。它不生成源码批准、提交回执或运行授权。
 独立审查后再用正常 CLI 两次打包核对摘要与完整字节；任何输入、工具链、依赖或压缩策略
 变化都要重新计算和审查。文档同步本身不启动审查、上传或发布。
+
+离线输入文件格式为 `{schemaVersion:1,sourceFiles,sourceFilesSha256}`。文件清单和摘要由
+`collectSourceReviewInputs`、`sourceReviewInputsDigest` 生成，必须覆盖全部插件输入。
+
+```sh
+bun scripts/source-review-bytes.ts <plugin-root> --inputs <complete-input-pin.json> --out <new-directory> --expected-bun 1.3.11 --compression deflate
+```
+
+普通提交打包可显式增加 `--compression deflate`；`check` 自动识别归档格式，
+不接受压缩参数。计算目录必须位于插件之外且尚不存在。生成待审材料后仍须取得
+绑定完整输入和最终包摘要的独立 SOURCE 审查，再执行正常双打包。

@@ -295,6 +295,7 @@
     "valueSegmentsValue": "{value0} · Segments: {value1}",
     "couldNotSendTheSummaryToAgent": "Could not send the summary to Agent: {value0}",
     "nothingWasHeardPleaseSayItAgain": "Nothing was heard. Please say it again.",
+    "emptyTranslationNotSent": "No content to translate was recognized, so nothing was sent.",
     "emptyUtteranceNotSent": "It sounded like you didn't say anything, so nothing was sent.",
     "theVoiceInterfaceIsNotOpen": "The Voice interface is not open",
     "inputDetails": "Input details",
@@ -717,6 +718,8 @@
     "characterCount": "Characters: {count}",
     "contextNoTextYet": "No text yet",
     "contextPendingTranscription": "Waiting for local transcription",
+    "contextFillerFragments": "Filler fragments · {count} original fragments",
+    "contextSourceFragments": "Expand {count} original fragments",
     "contextNoContent": "No content",
     "contextOriginalText": "Original transcript · {count} raw characters (including punctuation and whitespace)",
     "contextDigestRawCharacters": " · {count} raw characters (including punctuation) · {points} points",
@@ -724,6 +727,7 @@
     "cloudAccountPrice": "{price} USD cents/second · {reason}",
     "cloudAccountPriceUnavailable": "Current account pricing is unavailable. Refresh to retry.",
     "cloudAccountPriceFreeOnly": "{quote} · This model is restricted to free use",
+    "cloudModelFreeOnly": "This model is restricted to free use",
     "cloudPricingReason": {
       "subscriptionPrivilege": "Current subscription privilege price",
       "subscriptionPrice": "Current subscription price",
@@ -905,6 +909,32 @@
         "runProgram": "Run text-processing program",
         "unknown": "Use tool {tool}"
       }
+    },
+    "attachments": {
+      "reading": "Reading…",
+      "ready": "Attachment ready to send",
+      "remove": "Remove",
+      "errors": {
+        "VOICE_ATTACHMENT_EMPTY": "The file is empty.",
+        "VOICE_ATTACHMENT_TOO_LARGE": "The raw file must be no larger than 64 KiB; character and total byte limits also apply when sending.",
+        "VOICE_ATTACHMENT_NAME_INVALID": "The file name is not supported.",
+        "VOICE_ATTACHMENT_READ_FAILED": "Could not read the file. Remove it and select it again.",
+        "VOICE_ATTACHMENT_ENCODING_UNSUPPORTED": "Use UTF-8 or UTF-16 text with a byte order mark.",
+        "VOICE_ATTACHMENT_BINARY_UNSUPPORTED": "This file is not readable text.",
+        "VOICE_ATTACHMENT_EXTRACTION_REQUIRED": "This file cannot be read as supported text.",
+        "VOICE_ATTACHMENT_COUNT_EXCEEDED": "Select at most four files per message.",
+        "VOICE_ATTACHMENT_TURN_TOO_LARGE": "The files, message and context exceed this Agent request’s text limit (24000 characters / 64 KiB). Use smaller files or a shorter message.",
+        "VOICE_ATTACHMENT_DOCUMENT_INVALID": "The document is damaged or its format cannot be extracted.",
+        "VOICE_ATTACHMENT_DOCUMENT_LIMIT": "The document exceeds extraction or request limits. Nothing was truncated; select a smaller file.",
+        "VOICE_ATTACHMENT_DOCUMENT_NO_TEXT": "No extractable text was found. OCR for scanned PDFs is not supported yet.",
+        "VOICE_ATTACHMENT_DOCUMENT_TIMEOUT": "Document extraction timed out. Remove and reselect it, or use a smaller file.",
+        "VOICE_ATTACHMENT_DOCUMENT_UNAVAILABLE": "This environment cannot run document extraction. Select a text file instead.",
+        "VOICE_ATTACHMENT_DOCUMENT_ENCRYPTED": "Encrypted or password-protected documents are not supported. Select an unencrypted copy.",
+        "VOICE_ATTACHMENT_DOCUMENT_TOO_LARGE": "The raw PDF or Excel file must be no larger than 5 MiB.",
+        "VOICE_ATTACHMENT_SCENE_UNSUPPORTED": "File attachments are available only in task conversations.",
+        "VOICE_ATTACHMENT_MODEL_UNCONFIRMED": "Attachment input is unconfirmed. Enable command attachments and check the current model in settings."
+      },
+      "removeNamed": "Remove {name}"
     }
   },
   "metadata": {

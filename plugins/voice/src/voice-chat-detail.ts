@@ -1,4 +1,11 @@
-import { t, bindText, type TextSource } from "./voice-i18n";
+import { type PreparedVoiceAttachment, type VoiceAttachmentTarget } from "./voice-attachment-input";
+import { voiceAttachmentFormat } from "./voice-attachment-admission";
+import "./voice-attachments.css";
+import { VoiceAttachmentContentError, VOICE_TEXT_ATTACHMENT_POLICY, type VoiceTextAttachment, type VoiceAttachmentContentCode } from "./voice-attachment-content";
+import { readVoiceDocumentAttachment } from "./voice-document-extraction";
+import { confirmedVoiceAttachmentFormats, requireVoiceAttachmentAdmission } from "./voice-attachment-admission";
+import { attachmentFormatsForVoiceCommand, voiceCommandAllowsAttachments } from "./voice-attachment-scene";
+import { t, bindText, bindAttribute, type TextSource } from "./voice-i18n";
 /**
  * 命令详情（Chat detail，A3-15/16 → R8「按 Agent 对话界面做」）。
  *
@@ -27,7 +34,7 @@ import type {
   VoiceViewState,
 } from "./data";
 import { BUILTIN_VOICE_COMMANDS } from "./voice-ai-contract";
-import { availableConversationBackends, conversationKey, conversationMembers, scopeUnavailableMessage } from "./agent-conversation";
+import { conversationKey, conversationMembers } from "./agent-conversation";
 import type { ResolvedAgentBackend } from "@reai/app-sdk/v1";
 import type { VoiceErrorDetail } from "./data";
 import { elapsedNode, errorDetailFrom, failureState, stepText, structuredToken, type VoiceDiagnosticDetail, type VoiceDiagnosticEntry } from "./voice-diagnostics";
@@ -82,9 +89,9 @@ export function commandIdentity(
  * 一条历史条目展开成消息：自带 `messages` 就用它，否则从 transcript / reply 推。
  * 一条条目就是一个 Agent 回合：回合里的全部工具卡（含旧版每工具一张的卡）并成一条过程折叠。
  */
-function itemMessages(item: VoiceCommandHistoryItem): ChatMessage[] {
+function itemMessages(item: VoiceCommandHistoryItem, developerMode: boolean): ChatMessage[] {
   if (item.messages && item.messages.length > 0) {
-    return mergeToolProgress(item.messages.map(toChatMessage), item.status);
+    return mergeToolProgress(item.messages.map(toChatMessage), item.status, developerMode);
   }
   const createdAt = Date.parse(item.createdAt);
   const messages: ChatMessage[] = [{ from: "user", text: item.transcript, at: createdAt }];
@@ -137,10 +144,12 @@ function toChatMessage(message: VoiceChatMessage): ChatMessage {
 
 /** 整段会话的消息流（给渲染与测试同一个口径）。 */
 export function commandMessages(conversation: VoiceCommandHistoryItem[]): ChatMessage[] {
-  return conversation.flatMap(itemMessages);
+  return conversation.flatMap(item => itemMessages(item, true));
 }
 
 export interface VoiceChatDetailDeps {
+  /** Confirmed cached format admission; missing means no attachment entry. */
+  attachmentFormats?(): readonly import("./voice-attachment-admission").VoiceAttachmentFormat[];
   getState(): VoiceViewState;
   getSelectedId(): string | undefined;
   setSelectedId(id: string): void;
@@ -148,7 +157,10 @@ export interface VoiceChatDetailDeps {
   isActive(): boolean;
   render(): void;
   actions: {
-    onSendCommandFollowUp(text: string, conversation?: VoiceAgentConversationRef): Promise<string>;
+    onPrepareAttachments?(conversation?: VoiceAgentConversationRef): Promise<VoiceAttachmentTarget>;
+    onUploadAttachment?(file: File, target: VoiceAttachmentTarget, signal: AbortSignal): Promise<PreparedVoiceAttachment>;
+    onReleaseAttachment?(file: PreparedVoiceAttachment): Promise<void>;
+    onSendCommandFollowUp(text: string, conversation?: VoiceAgentConversationRef, attachments?: readonly PreparedVoiceAttachment[]): Promise<string>;
     onCancelCommand?(taskId: string): Promise<void>;
     onRefreshConversationBackends?(): Promise<void>;
     onChangeConversationBackend?(itemId: string, backend: ResolvedAgentBackend | "auto"): Promise<void>;
@@ -204,6 +216,94 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
   /** 输入坞状态：草稿、发送中、原地错误、续接观察窗。 */
   let draft = "";
   let sending = false;
+  type DraftFile = { name: string; controller: AbortController; value?: PreparedVoiceAttachment; error?: VoiceAttachmentContentCode };
+  let draftFiles: DraftFile[] = [];
+  let attachmentOwner: string | undefined;
+  let preparingAttachments=false;
+  let viewGeneration=0;
+  let attachmentEpoch=0;
+  let admissionLoading=false;
+  let admissionReadOwner: string | undefined;
+  let attachmentTarget: VoiceAttachmentTarget | undefined;
+  const attachmentOwnerKey=()=>{const item=currentItem();return item?JSON.stringify({id:item.id,choices:deps.getState().conversationOptions?.[conversationKey(item)]??null,session:item.agentSessionId??null}):undefined;};
+  let attachmentError = false;
+  const formatsForCurrentScene = () => attachmentFormatsForVoiceCommand(currentItem()?.commandId,
+    () => attachmentTarget?.formats ?? deps.attachmentFormats?.() ?? confirmedVoiceAttachmentFormats());
+  const clearDraftAttachments = () => {
+    attachmentEpoch++;
+    preparingAttachments=false;
+    for (const file of draftFiles) {file.controller.abort();if(file.value)void deps.actions.onReleaseAttachment?.(file.value);}
+    attachmentTarget=undefined;
+    draftFiles = [];
+    if (attachmentError) inlineError = undefined;
+    attachmentError = false;
+  };
+  const attachmentMessage = (cause: unknown) => t(`chat.attachments.errors.${cause instanceof VoiceAttachmentContentError ? cause.code : "VOICE_ATTACHMENT_READ_FAILED"}`);
+  const sameTarget = (left: VoiceAttachmentTarget | undefined, right: VoiceAttachmentTarget | undefined) =>
+    left === right || Boolean(left && right && left.ownerKey === right.ownerKey && left.sessionId === right.sessionId
+      && left.admission.opaqueBinding === right.admission.opaqueBinding && left.admission.revision === right.admission.revision);
+  // Only the owned local capability snapshot is read here; no file bytes or model request.
+  const refreshAdmission = () => {
+    if (!deps.actions.onPrepareAttachments || admissionLoading || sending || draftFiles.length || preparingAttachments
+      || !voiceCommandAllowsAttachments(currentItem()?.commandId) || deps.getState().commandPhase !== "idle"
+      || deps.getState().phase !== "idle" || deps.getState().dictationPhase !== "idle") return;
+    const owner=attachmentOwnerKey();
+    if (admissionReadOwner === owner) return;
+    const generation=viewGeneration;const selected=deps.getSelectedId();
+    admissionLoading=true;admissionReadOwner=owner;
+    void deps.actions.onPrepareAttachments(conversationRef(currentItem())).then(target => {
+      if (generation!==viewGeneration || !deps.isActive() || deps.getSelectedId()!==selected
+        || !voiceCommandAllowsAttachments(currentItem()?.commandId)) return;
+      attachmentTarget=target;attachmentOwner=attachmentOwnerKey();admissionReadOwner=attachmentOwner;
+    }).catch(() => {
+      // An unconfirmed or disabled capability keeps the entry hidden; plain text stays usable.
+    }).finally(() => {
+      if (generation!==viewGeneration) return;
+      admissionLoading=false;admissionReadOwner=attachmentOwnerKey();deps.render();
+    });
+  };
+  const pickFiles = async (files: File[]) => {
+    if (!voiceCommandAllowsAttachments(currentItem()?.commandId) || preparingAttachments) return;
+    const selectedOn=deps.getSelectedId();const generation=viewGeneration;const epoch=attachmentEpoch;const owner=attachmentOwnerKey();
+    const stillCurrent=()=>generation===viewGeneration && epoch===attachmentEpoch && owner===attachmentOwnerKey()
+      && deps.isActive() && deps.getSelectedId()===selectedOn && voiceCommandAllowsAttachments(currentItem()?.commandId);
+    if (draftFiles.length + files.length > VOICE_TEXT_ATTACHMENT_POLICY.maxAttachments) {
+      attachmentError=true;inlineError=()=>t("chat.attachments.errors.VOICE_ATTACHMENT_COUNT_EXCEEDED");deps.render();return;
+    }
+    if (deps.actions.onPrepareAttachments) {
+      preparingAttachments=true;deps.render();
+      try {
+        const target=await deps.actions.onPrepareAttachments(conversationRef(currentItem()));
+        if (!stillCurrent()) return;
+        if (draftFiles.length && !sameTarget(attachmentTarget,target)) throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+        attachmentTarget=target;
+      } catch(cause) { if(stillCurrent()){attachmentError=true;inlineError=()=>attachmentMessage(cause);} return; }
+      finally { if(stillCurrent()){preparingAttachments=false;deps.render();} }
+    }
+    if (!stillCurrent()) return;
+    const selectedTarget=attachmentTarget;
+    const entries=files.map(file=>({name:file.name,controller:new AbortController()} as DraftFile));
+    draftFiles.push(...entries);inlineError=undefined;deps.render();
+    await Promise.all(entries.map(async(entry,index)=>{
+      try {
+        const original=files[index]!;
+        requireVoiceAttachmentAdmission(original,formatsForCurrentScene());
+        const format=voiceAttachmentFormat(original);
+        const value:PreparedVoiceAttachment=format==="image" && selectedTarget && deps.actions.onUploadAttachment
+          ? await deps.actions.onUploadAttachment(original,selectedTarget,entry.controller.signal)
+          : {...await readVoiceDocumentAttachment(original,{signal:entry.controller.signal}),...(selectedTarget?{target:selectedTarget,mode:format==="pdf"?"pdf-text" as const:format==="xlsx"||format==="xls"?"spreadsheet-text" as const:"text" as const}:{})};
+        if (!stillCurrent() || !sameTarget(selectedTarget,attachmentTarget) || entry.controller.signal.aborted || !draftFiles.includes(entry)) {
+          void deps.actions.onReleaseAttachment?.(value);
+          if (stillCurrent() && draftFiles.includes(entry)) throw new VoiceAttachmentContentError("VOICE_ATTACHMENT_MODEL_UNCONFIRMED");
+          return;
+        }
+        try { requireVoiceAttachmentAdmission(original,formatsForCurrentScene()); }
+        catch(cause){void deps.actions.onReleaseAttachment?.(value);throw cause;}
+        entry.value=value;
+      } catch(cause) { if(!entry.controller.signal.aborted && stillCurrent()) entry.error=cause instanceof VoiceAttachmentContentError?cause.code:"VOICE_ATTACHMENT_READ_FAILED"; }
+    }));
+    if(stillCurrent() && entries.some(entry=>draftFiles.includes(entry))) deps.render();
+  };
   const cancellingTasks = new Set<string>();
   let inlineError: TextSource | undefined;
   let inlineErrorDetail: VoiceErrorDetail | undefined;
@@ -229,29 +329,6 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
   let composer: ChatComposer | undefined;
   /** View 重渲染会重建 DOM；按任务保留用户展开的操作明细。 */
   const expandedToolGroups = new Set<string>();
-  /** F02/F04 范围面板：展开态、保存中、以及切换对话时作废迟到回调的代次。 */
-  let scopeExpanded = false;
-  let scopeBusy = false;
-  let scopeGeneration = 0;
-
-  const updateScope = (operation: () => Promise<void>) => {
-    if (scopeBusy) return;
-    const selectedOn = deps.getSelectedId();
-    const generation = scopeGeneration;
-    scopeBusy = true;
-    inlineError = undefined;
-    deps.render();
-    void operation().catch((cause: unknown) => {
-      if (generation === scopeGeneration && deps.isActive() && deps.getSelectedId() === selectedOn) {
-        setInlineFailure("scope", cause, () => t("chat.scopeChangeFailed"));
-      }
-    }).finally(() => {
-      if (generation !== scopeGeneration) return;
-      scopeBusy = false;
-      deps.render();
-    });
-  };
-
   /** 这条命令的联网调用明细（只列失败 / 未结束的）：进诊断「对象状态」。 */
   const toolDetails = (entry: VoiceCommandHistoryItem): VoiceDiagnosticDetail[] => {
     const calls = (entry.messages ?? []).flatMap((message) => message.card?.kind === "tool-group" ? message.card.calls : []);
@@ -317,6 +394,10 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
     const state = deps.getState();
     const item = currentItem();
     if (!item) return false;
+    const taskAttachmentScene = voiceCommandAllowsAttachments(item.commandId);
+    if (!taskAttachmentScene || attachmentOwner !== attachmentOwnerKey()) clearDraftAttachments();
+    attachmentOwner = taskAttachmentScene ? attachmentOwnerKey() : undefined;
+    if(taskAttachmentScene) refreshAdmission();
     const conversation = commandConversation(item, state.commandHistory);
     const identity = commandIdentity(item, conversation);
 
@@ -367,7 +448,7 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
     for (const entry of conversation) {
       const entryStatus = entryDiagnostics(entry);
       const startedMs = Date.parse(entry.createdAt);
-      for (const message of itemMessages(entry)) {
+      for (const message of itemMessages(entry, state.developerMode)) {
         msgs.append(renderChatMessage(message, {
           developerMode: state.developerMode,
           toolGroupExpanded: expandedToolGroups.has(entry.id),
@@ -394,7 +475,9 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
       if (entryStatus) msgs.append(entryStatus);
     }
     const recoverable = [...conversation].reverse().find(entry => entry.errorCode === "AGENT_RECEIPT_UNKNOWN");
-    if (recoverable && deps.actions.onRetryAgentRequest) {
+    const nonTaskFileRecovery = recoverable && !voiceCommandAllowsAttachments(recoverable.commandId)
+      && recoverable.messages?.find(message => message.from === "user")?.attachments?.some(file => file.kind === "file");
+    if (recoverable && !nonTaskFileRecovery && deps.actions.onRetryAgentRequest) {
       const retry = textEl("button", "dev-btn chat-retry-request", "");
       retry.type = "button";
       bindText(retry, () => t(sending ? "chat.recoveringRequest" : "chat.retryOriginalRequest"));
@@ -448,81 +531,7 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
       state.commandPhase !== "idle" ||
       state.phase !== "idle" ||
       state.activeMode !== undefined;
-    if (deps.actions.onChangeConversationBackend) {
-      // F02/F04：输入坞上方一条「当前 Agent + 更换 Agent」；展开后只改本对话的 Agent。
-      // 2026-09-30 用户裁定：语音命令对话里不提供工作目录设置入口（原「App 工作目录」按钮）。
-      // 存量对话里已选过的 direct 工作目录仍由会话创建链路照常使用，这里只撤 UI。
-      const controls = el("section", "chat-scope");
-      const choices = state.conversationOptions?.[conversationKey(item)];
-      const currentAgent = el("span", "chat-current-agent");
-      bindText(currentAgent, () => choices?.resolvedBackend
-        ? t("chat.actualAgent", { name: choices.resolvedBackend === "pi" ? "Pi" : choices.resolvedBackend === "dsh" ? "DSH" : "Codex" })
-        : choices?.backend ? t("chat.nextAgent", { name: choices.backend === "pi" ? "Pi" : choices.backend === "dsh" ? "DSH" : "Codex" }) : t("chat.driverDefault"));
-      const toggle = textEl("button", "chat-scope-toggle", "");
-      toggle.type = "button";
-      bindText(toggle, () => t("chat.changeAgent"));
-      toggle.setAttribute("aria-expanded", String(scopeExpanded));
-      toggle.disabled = busy || scopeBusy || state.dictationPhase !== "idle";
-      toggle.addEventListener("click", () => {
-        scopeExpanded = !scopeExpanded;
-        deps.render();
-        if (scopeExpanded && deps.actions.onRefreshConversationBackends) updateScope(() => deps.actions.onRefreshConversationBackends!());
-      });
-      controls.append(currentAgent, toggle);
-      if (scopeBusy) {
-        const updating = textEl("p", "chat-scope-note", "");
-        updating.setAttribute("role", "status");
-        bindText(updating, () => t("chat.scopeUpdating"));
-        controls.append(updating);
-        controls.append(deps.diagnostics.block(`chat-scope:${conversationKey(item)}`, {
-          state: "waiting", step: () => stepText("scope"), ...deps.diagnostics.since(`chat-scope:${conversationKey(item)}`),
-        }));
-      }
-      if (scopeExpanded) {
-        const panel = el("div", "chat-scope-panel");
-        const supportedBackends = availableConversationBackends(state.agentBackends ?? []);
-        const scopeUnsupported = state.agentBackends !== undefined && supportedBackends.length === 0;
-        const label = textEl("label", "chat-agent-label", "Agent");
-        const select = el("select", "chat-agent-select");
-        select.setAttribute("aria-label", "Agent");
-        const defaults = textEl("option", "", "");
-        defaults.value = "auto";
-        bindText(defaults, () => t("chat.driverDefault"));
-        select.append(defaults);
-        for (const status of supportedBackends) {
-          const option = textEl("option", "", status.backend === "pi" ? "Pi" : status.backend === "dsh" ? "DSH" : "Codex");
-          option.value = status.backend;
-          select.append(option);
-        }
-        select.value = choices?.backend ?? "auto";
-        // 之前选的 Agent 现在不可用，不等于换成了默认：原样显示、禁用。
-        if (choices?.backend && select.value === "") {
-          const unavailable = textEl("option", "", t("chat.currentAgentUnavailable", { name: choices.backend }));
-          unavailable.value = choices.backend;
-          unavailable.disabled = true;
-          select.append(unavailable);
-          select.value = choices.backend;
-        }
-        select.disabled = busy || scopeBusy || scopeUnsupported || !deps.actions.onChangeConversationBackend;
-        select.addEventListener("change", () => {
-          const backend = select.value;
-          if (backend === "auto" || backend === "pi" || backend === "dsh" || backend === "codex") updateScope(() => deps.actions.onChangeConversationBackend!(item.id, backend));
-        });
-        label.append(select);
-        const selectedStatus = state.agentBackends?.find(status => status.backend === (choices?.backend ?? choices?.resolvedBackend));
-        const selectedScopeUnavailable = selectedStatus?.available && selectedStatus.downloadRequired !== true
-          && !supportedBackends.some(status => status.backend === selectedStatus.backend);
-        if (selectedScopeUnavailable || (scopeUnsupported && state.agentBackends?.some(status => status.available && status.downloadRequired !== true))) {
-          const unsupported = textEl("p", "chat-scope-note", "");
-          unsupported.setAttribute("role", "status");
-          bindText(unsupported, () => scopeUnavailableMessage(selectedStatus, t("chat.scopeUnavailable")));
-          panel.append(unsupported);
-        }
-        panel.append(label, textEl("p", "chat-scope-note", t("chat.switchContextNote")));
-        controls.append(panel);
-      }
-      view.append(controls);
-    }
+    // 命令对话输入坞只保留发送与听写；Agent 配置沿用设置页与存量会话选择。
     // 回合在等你拍板（例如启用浏览器插件以联网）：写明在等什么、已等多久；Host 期间不计超时。
     // 入口就在本页：安装卡片的「一键安装并继续」。越界确认另有下面的审批提示，不重复。
     const waits = (state.agentWaits ?? []).filter((wait) => wait.reason !== "scope_approval"
@@ -567,12 +576,44 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
         })),
       }));
     }
+    const attachmentBlocked = preparingAttachments || draftFiles.some(file => !file.value || file.error);
+    let picker: HTMLInputElement | undefined;
+    if (taskAttachmentScene) {
+    picker = el("input", "chat-file-picker");
+    picker.type = "file";
+    picker.multiple = true;
+    picker.hidden = true;
+    picker.addEventListener("change", () => {
+      const files = Array.from(picker!.files ?? []);
+      picker!.value = ""; // Selecting the same file after a failure must fire again.
+      if (files.length) void pickFiles(files);
+    });
+    view.append(picker);
+    }
+    if (draftFiles.length) {
+      const strip = el("div", "chat-draft-files");
+      strip.setAttribute("aria-live", "polite");
+      for (const file of draftFiles) {
+        const card = el("div", "chat-draft-file");
+        card.append(textEl("span", "chat-draft-file-name", file.name));
+        const status = textEl("span", "chat-draft-file-status", "");
+        bindText(status, () => file.error ? t(`chat.attachments.errors.${file.error}`) : t(file.value ? "chat.attachments.ready" : "chat.attachments.reading"));
+        const remove = textEl("button", "chat-draft-file-remove", "");
+        remove.type = "button";
+        bindAttribute(remove, "aria-label", () => t("chat.attachments.removeNamed", { name: file.name }));
+        bindText(remove, () => t("chat.attachments.remove"));
+        remove.disabled = busy;
+        remove.addEventListener("click", () => { file.controller.abort(); if(file.value)void deps.actions.onReleaseAttachment?.(file.value); draftFiles = draftFiles.filter(entry => entry !== file); deps.render(); });
+        card.append(status, remove); strip.append(card);
+      }
+      view.append(strip);
+    }
     composer?.dispose();
     composer = mountChatComposer(view, {
       // 文案逐字取自设计稿 :3787。
       placeholder: () => t("chat.message8"),
       draft,
-      disabled: busy || scopeBusy || state.dictationPhase !== "idle",
+      disabled: busy || attachmentBlocked || state.dictationPhase !== "idle",
       onDraftChange: (value) => {
         // 只记草稿不重渲染：整页重渲染会换掉输入节点，打字焦点就没了。
         draft = value;
@@ -584,8 +625,8 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
         labels: { idle: () => t("chat.message9"), listening: () => t("chat.message10"), busy: () => t("chat.message11") },
         onToggle: toggleDictation,
       },
-      // 命令合同还没有附件通道：钮按稿画出来但点不动、有说明，不是假门。
-      attachDisabledTitle: () => t("chat.message12"),
+      onAttach: taskAttachmentScene ? () => { if (!busy && state.dictationPhase === "idle" && voiceCommandAllowsAttachments(currentItem()?.commandId)) picker?.click(); } : undefined,
+      hideAttach: !taskAttachmentScene || formatsForCurrentScene().length === 0,
     });
     shell.append(view);
     // 对话流落在最底部：看的是「最后说了什么」，不是「最初说了什么」（同稿 openChat）。
@@ -609,17 +650,30 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
    */
   const submit = (text: string) => {
     const state = deps.getState();
-    if (sending || scopeBusy || state.commandPhase !== "idle" || state.dictationPhase !== "idle") return;
+    if (draftFiles.some(file => !file.value || file.error) || sending || state.commandPhase !== "idle" || state.dictationPhase !== "idle") return;
     // 发送是异步的（getStatus 是真实 IPC）：回来的时候人可能已经不在这场对话里，
     // 草稿、错误、观察窗都只属于发出它的那一条。
     const sentOn = deps.getSelectedId();
+    const sentOwner=attachmentOwnerKey();const sentGeneration=viewGeneration;
+    const sentDraftFiles = draftFiles;
+    const sentFiles = sentDraftFiles.map(file => file.value!);
+    try {
+      for (const file of sentFiles) requireVoiceAttachmentAdmission({ name: file.name, type: file.mimeType }, formatsForCurrentScene());
+    } catch (cause) {
+      attachmentError = true;
+      inlineError = () => attachmentMessage(cause); deps.render(); return;
+    }
     sending = true;
+    // Detached in-flight files belong to this admission, not later view navigation.
+    draftFiles = [];
     inlineError = undefined;
     draft = "";
     deps.render();
     deps.actions
-      .onSendCommandFollowUp(text, conversationRef(currentItem()))
+      .onSendCommandFollowUp(text, conversationRef(currentItem()), sentFiles)
       .then((taskId) => {
+        // State delivery may select the next history row before this promise resolves.
+        if (draftFiles === sentDraftFiles) draftFiles = [];
         // 命令已起跑：只等待这个 taskId，后台运行与后来命令不会串台。
         if (!deps.isActive() || deps.getSelectedId() !== sentOn) return;
         followUpTaskId = taskId;
@@ -630,12 +684,18 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
         }
       })
       .catch((cause: unknown) => {
-        if (!deps.isActive() || deps.getSelectedId() !== sentOn) return;
+        if (sentGeneration!==viewGeneration || sentOwner!==attachmentOwnerKey() || !deps.isActive() || deps.getSelectedId() !== sentOn) {
+          for(const file of sentFiles) void deps.actions.onReleaseAttachment?.(file);
+          return;
+        }
         // 发不出去就把草稿还回去：可重试的失败不该让人重打整句话。
         draft = text;
-        setInlineFailure("followUp", cause, () => t("chat.message13"));
+        if (!draftFiles.length) draftFiles = sentDraftFiles;
+        if (cause instanceof VoiceAttachmentContentError) inlineError = () => attachmentMessage(cause);
+        else setInlineFailure("followUp", cause, () => t("chat.message13"));
       })
       .finally(() => {
+        if(sentGeneration!==viewGeneration)return;
         sending = false;
         deps.render();
       });
@@ -694,9 +754,9 @@ export function createVoiceChatDetail(deps: VoiceChatDetailDeps): VoiceChatDetai
   };
 
   const reset = () => {
-    scopeGeneration += 1;
-    scopeExpanded = false;
-    scopeBusy = false;
+    viewGeneration++;sending=false;admissionLoading=false;admissionReadOwner=undefined;
+    clearDraftAttachments();
+    attachmentOwner = undefined;
     draft = "";
     expandedToolGroups.clear();
     inlineError = undefined;

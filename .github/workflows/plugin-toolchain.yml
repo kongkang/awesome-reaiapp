@@ -7,6 +7,8 @@ on:
       - 'plugins/**'
       - 'examples/**'
       - 'scripts/plugin-*.ts'
+      - 'scripts/source-review-bytes.ts'
+      - 'scripts/verify-platform-packages.ts'
       - '.github/workflows/plugin-toolchain.yml'
   push:
     branches: [main]
@@ -15,6 +17,8 @@ on:
       - 'plugins/**'
       - 'examples/**'
       - 'scripts/plugin-*.ts'
+      - 'scripts/source-review-bytes.ts'
+      - 'scripts/verify-platform-packages.ts'
       - '.github/workflows/plugin-toolchain.yml'
 
 permissions:
@@ -41,6 +45,9 @@ jobs:
       - name: Check shared types
         working-directory: packages
         run: bun run typecheck
+      - name: Verify packed tools outside the repository
+        working-directory: packages
+        run: bun run verify:pack
 
   examples:
     name: Verify example ${{ matrix.example }}

@@ -4,6 +4,8 @@ ReAI 官方插件、开发文档、共享工具和示例的统一仓库。插件
 
 脱敏文档已先发布，15 个插件和 4 个示例随后完成测试、编译与重复打包。完整版本和包摘要见 [本地打包验收](docs/source-delivery-2026-10-03.md)。源码公开和本地出包不表示平台已审核、签名或上架。
 
+本次共享工具与 Voice `2.14.5-dev.3` 源码候选同步及验证见 [2026-10-06 源码交付](docs/source-delivery-2026-10-06.md)。候选未送审或上架，网站版本单独核验。
+
 - 开放平台：[open.reai.com](https://open.reai.com/)
 - 中文文档：[开发规范](https://open.reai.com/docs/)
 - 英文文档：[English reading guides](https://open.reai.com/docs/en/)

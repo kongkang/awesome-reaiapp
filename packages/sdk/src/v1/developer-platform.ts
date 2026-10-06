@@ -1,3 +1,4 @@
+import type { DeveloperWorkflowClient, DeveloperWorkflowRequest } from "./developer-workflow";
 /** `developer.platform@1` —— 开放平台系统插件专用的最小管理合同。 */
 
 export const DEVELOPER_CENTER_APP_ID = "com.reai.developer-center" as const;
@@ -11,6 +12,10 @@ export const DeveloperPlatformRequestMethod = {
   ProductsList: "developer.platform.products.list",
   ProductsCreate: "developer.platform.products.create",
   ClientsGet: "developer.platform.clients.get",
+  TestersList: "developer.platform.testers.list",
+  TestersAdd: "developer.platform.testers.add",
+  TestersRemove: "developer.platform.testers.remove",
+  Workflow: "developer.platform.workflow",
 } as const;
 
 export const DEVELOPER_PLATFORM_REQUEST_METHODS = [
@@ -20,6 +25,10 @@ export const DEVELOPER_PLATFORM_REQUEST_METHODS = [
   DeveloperPlatformRequestMethod.ProductsList,
   DeveloperPlatformRequestMethod.ProductsCreate,
   DeveloperPlatformRequestMethod.ClientsGet,
+  DeveloperPlatformRequestMethod.TestersList,
+  DeveloperPlatformRequestMethod.TestersAdd,
+  DeveloperPlatformRequestMethod.TestersRemove,
+  DeveloperPlatformRequestMethod.Workflow,
 ] as const;
 
 export type DeveloperPlatformRequestMethod =
@@ -35,6 +44,7 @@ export const DEVELOPER_PLATFORM_BACKEND_ERROR_CODES = [
   "DEVELOPER_PLATFORM_CONFLICT",
   "DEVELOPER_PLATFORM_RATE_LIMITED",
   "DEVELOPER_PLATFORM_BACKEND_REJECTED",
+  "DEVELOPER_PLATFORM_TESTER_NOT_TEAM_MEMBER",
 ] as const;
 
 export type DeveloperPlatformBackendErrorCode =
@@ -154,6 +164,24 @@ export interface DeveloperClientDetail {
   revisions: DeveloperClientRevisionSummary[];
 }
 
+/** 开发体验者档案：姓名优先 displayName → username，均缺时由界面回退 UID。 */
+export interface DeveloperTesterEntry {
+  userId: string;
+  status: "active" | "ineligible";
+  displayName: string | null;
+  avatarUrl: string | null;
+  username: string | null;
+}
+
+/** 体验者名单快照；`ineligible` 表示已非 accepted 团队成员（名单即授权，#1362 后语义）。 */
+export interface DeveloperTestersSummary {
+  owner: DeveloperTesterEntry;
+  items: DeveloperTesterEntry[];
+  /** 服务端权威名额上限；owner 不占名额。 */
+  testerLimit: number;
+  canManageTesters: boolean;
+}
+
 export interface DeveloperProjectsListInput {
   teamId: string;
 }
@@ -193,19 +221,48 @@ export interface DeveloperClientGetInput {
   managementClientId: string;
 }
 
+export interface DeveloperTestersListInput {
+  teamId: string;
+  productId: string;
+}
+
+export interface DeveloperTesterAddInput {
+  teamId: string;
+  productId: string;
+  /** 体验者用户 UUID；必须是 accepted 团队成员。 */
+  userId: string;
+  /** Host/后端要求的显式幂等键（F3A create 同款规则）。 */
+  idempotencyKey: string;
+}
+
+export interface DeveloperTesterRemoveInput {
+  teamId: string;
+  productId: string;
+  testerUserId: string;
+}
+
 export interface DeveloperPlatformClient {
+  /** Optional for older SDK adapters; the Host still verifies every operation. */
+  workflow?: DeveloperWorkflowClient;
   getContext(): Promise<DeveloperPlatformContext>;
   listProjects(input: DeveloperProjectsListInput): Promise<DeveloperProjectSummary[]>;
   listScopes(input: DeveloperScopesListInput): Promise<DeveloperScopeSummary[]>;
   listProducts(input: DeveloperProductsListInput): Promise<DeveloperProductSummary[]>;
   createProduct(input: DeveloperProductCreateInput): Promise<DeveloperProductCreateResult>;
   getClient(input: DeveloperClientGetInput): Promise<DeveloperClientDetail>;
+  listTesters(input: DeveloperTestersListInput): Promise<DeveloperTestersSummary>;
+  addTester(input: DeveloperTesterAddInput): Promise<DeveloperTestersSummary>;
+  removeTester(input: DeveloperTesterRemoveInput): Promise<DeveloperTestersSummary>;
 }
 
 export type DeveloperPlatformRequest =
+  | { method: typeof DeveloperPlatformRequestMethod.Workflow; params: DeveloperWorkflowRequest }
   | { method: typeof DeveloperPlatformRequestMethod.ContextGet; params: Record<string, never> }
   | { method: typeof DeveloperPlatformRequestMethod.ProjectsList; params: DeveloperProjectsListInput }
   | { method: typeof DeveloperPlatformRequestMethod.ScopesList; params: DeveloperScopesListInput }
   | { method: typeof DeveloperPlatformRequestMethod.ProductsList; params: DeveloperProductsListInput }
   | { method: typeof DeveloperPlatformRequestMethod.ProductsCreate; params: DeveloperProductCreateInput }
-  | { method: typeof DeveloperPlatformRequestMethod.ClientsGet; params: DeveloperClientGetInput };
+  | { method: typeof DeveloperPlatformRequestMethod.ClientsGet; params: DeveloperClientGetInput }
+  | { method: typeof DeveloperPlatformRequestMethod.TestersList; params: DeveloperTestersListInput }
+  | { method: typeof DeveloperPlatformRequestMethod.TestersAdd; params: DeveloperTesterAddInput }
+  | { method: typeof DeveloperPlatformRequestMethod.TestersRemove; params: DeveloperTesterRemoveInput };

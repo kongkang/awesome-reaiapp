@@ -98,6 +98,8 @@ export interface AgentBackendCapabilities {
      * 旧 Host，创建会话时应省略该字段，否则整包会被拒绝。
      */
     featureRef?: boolean;
+    /** Additive probe; absence keeps file inputs closed even on an older 1.24 Host. */
+    attachmentInputVersion?: 1;
     delivery: "buffered" | "streaming";
     durableTurns: boolean;
     resultRetentionSeconds: number;
@@ -218,6 +220,7 @@ export interface AgentSessionClient extends AgentServiceClient {
     text: string;
     /** host = 通用任务胶囊；caller = 调用方自己负责本轮呈现。 */
     taskPresentation?: "host" | "caller";
+    attachmentInput?: import("./agent-attachments").AgentAttachmentTurnInput;
   }): Promise<AgentSendResult>;
   cancel(options: { sessionId: string; turnId: string }): Promise<{ cancelled: boolean }>;
   history(options: { sessionId: string }): Promise<{ items: AgentHistoryItem[] }>;

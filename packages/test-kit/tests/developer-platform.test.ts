@@ -84,6 +84,18 @@ describe("developer.platform Mock Host", () => {
       )).rejects.toMatchObject({ code: "DEVELOPER_PLATFORM_INVALID_REQUEST" });
     }
 
+    // 体验者三方法同样严格：额外字段、非法 UUID、非法幂等键一律拒绝。
+    for (const [method, params] of [
+      [RequestMethod.DeveloperPlatformTestersList, { teamId: TEAM_ID, productId: "not-a-uuid" }],
+      [RequestMethod.DeveloperPlatformTestersList, { teamId: TEAM_ID, productId: PROJECT_ID, backendUrl: "https://evil.test" }],
+      [RequestMethod.DeveloperPlatformTestersAdd, { teamId: TEAM_ID, productId: PROJECT_ID, userId: TEAM_ID, idempotencyKey: "bad key" }],
+      [RequestMethod.DeveloperPlatformTestersAdd, { teamId: TEAM_ID, productId: PROJECT_ID, userId: "not-a-uuid", idempotencyKey: "add-1" }],
+      [RequestMethod.DeveloperPlatformTestersRemove, { teamId: TEAM_ID, productId: PROJECT_ID, testerUserId: "not-a-uuid" }],
+    ] as const) {
+      await expect(host.bridge.request(method, params as never))
+        .rejects.toMatchObject({ code: "DEVELOPER_PLATFORM_INVALID_REQUEST" });
+    }
+
     await expect(host.bridge.request(RequestMethod.DeveloperPlatformProductsCreate, {
       teamId: TEAM_ID,
       projectId: PROJECT_ID,
@@ -148,4 +160,12 @@ describe("developer.platform Mock Host", () => {
     }))
       .rejects.toMatchObject({ code: "BACKEND_CAPABILITY_UNAVAILABLE" });
   });
+});
+
+test('workflow uses the generated schema and rejects nested transport injection',async()=>{
+ const host=new MockHost({manifest,loadApp:async()=>({default:{}}),developerPlatformHandler:()=>({success:true})});
+ const input={teamId:TEAM_ID,managementClientId:PROJECT_ID,draft:{expectedUpdatedAt:'2026-09-22',name:'safe'}};
+ await expect(host.bridge.request(RequestMethod.DeveloperPlatformWorkflow,{action:'draftUpdate',input})).resolves.toEqual({success:true});
+ await expect(host.bridge.request(RequestMethod.DeveloperPlatformWorkflow,{action:'draftUpdate',input:{...input,draft:{...input.draft,url:'https://bad.invalid'}}})).rejects.toMatchObject({code:'DEVELOPER_PLATFORM_INVALID_REQUEST'});
+ expect(host.developerPlatformRequests).toHaveLength(1);
 });
