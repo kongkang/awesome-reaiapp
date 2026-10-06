@@ -228,7 +228,11 @@
           "developer.platform.scopes.list",
           "developer.platform.products.list",
           "developer.platform.products.create",
-          "developer.platform.clients.get"
+          "developer.platform.clients.get",
+          "developer.platform.testers.list",
+          "developer.platform.testers.add",
+          "developer.platform.testers.remove",
+          "developer.platform.workflow"
         ]
       },
       "agent.session@2": {
@@ -239,6 +243,11 @@
           "agent.v2.session.conversation-opened",
           "agent.v2.tool-dependency.require",
           "agent.v2.session.create",
+          "agent.v2.attachment.read",
+          "agent.v2.attachment.upload.start",
+          "agent.v2.attachment.upload.chunk",
+          "agent.v2.attachment.upload.finish",
+          "agent.v2.attachment.upload.cancel",
           "agent.v2.turn.start",
           "agent.v2.turn.get",
           "agent.v2.turn.events",
@@ -385,6 +394,7 @@
       "DEVELOPER_PLATFORM_CONFLICT",
       "DEVELOPER_PLATFORM_RATE_LIMITED",
       "DEVELOPER_PLATFORM_BACKEND_REJECTED",
+      "DEVELOPER_PLATFORM_TESTER_NOT_TEAM_MEMBER",
       "TTS_CANCELLED",
       "TTS_GENERATION_FAILED",
       "TERMINAL_NOT_GRANTED",
@@ -407,7 +417,20 @@
       "AGENT_EXEC_IO_FAILED",
       "AGENT_EXEC_FAILED",
       "AGENT_EXEC_SCOPE_REQUIRED",
-      "NETWORK_UPLOAD_UNSUPPORTED"
+      "NETWORK_UPLOAD_UNSUPPORTED",
+      "AGENT_ATTACHMENT_BINDING_CHANGED",
+      "AGENT_ATTACHMENT_CACHE_CAPACITY",
+      "AGENT_ATTACHMENT_CACHE_CORRUPT",
+      "AGENT_ATTACHMENT_CACHE_SAVE_FAILED",
+      "AGENT_ATTACHMENT_CONTENT_INVALID",
+      "AGENT_ATTACHMENT_INCOMPLETE",
+      "AGENT_ATTACHMENT_INPUT_UNSUPPORTED",
+      "AGENT_ATTACHMENT_LEASE_EXPIRED",
+      "AGENT_ATTACHMENT_READER_DISABLED",
+      "AGENT_ATTACHMENT_SCENE_UNSUPPORTED",
+      "AGENT_ATTACHMENT_TOO_LARGE",
+      "AGENT_ATTACHMENT_UNCONFIRMED",
+      "AGENT_ATTACHMENT_UNSUPPORTED"
     ]
   },
   "runtime": {

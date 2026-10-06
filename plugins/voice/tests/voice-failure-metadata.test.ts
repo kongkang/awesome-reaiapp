@@ -268,7 +268,7 @@ test("同一回合不同类型的工具调用（联网、浏览器、文件）�
     expect(h.root.querySelectorAll(".chat-status-card")).toHaveLength(1);
     expect(h.root.querySelector(".chat-status-card .chat-status-label")?.textContent).toBe("读取文件未完成：工具授权不可用");
     expect(h.root.querySelector(".chat-status-card .chat-status-meta")?.textContent)
-      .toBe("错误码 AGENT_TOOL_AUTHORIZATION_UNAVAILABLE · 1 次失败");
+      .toBe("1 次失败");
   } finally { await h.cleanup(); }
 });
 

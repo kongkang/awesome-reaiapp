@@ -39,6 +39,17 @@ test("ordinary app build manifest and complete archive match frozen CLI byte for
   expect(packedFiles(readFileSync(result.outputPath)).has("dist/app.css")).toBe(true);
 });
 
+test("explicit Deflate builds twice identically and preserves every packaged resource", async () => {
+  const root = fixture();
+  const stored = await packApp(root, join(root, "store.reaiapp"), false);
+  const compressed = await packApp(root, join(root, "deflate.reaiapp"), false, undefined, { compression: "deflate" });
+  const repeated = await packApp(root, join(root, "repeat.reaiapp"), false, undefined, { compression: "deflate" });
+  const bytes = readFileSync(compressed.outputPath);
+  expect(bytes.length).toBeLessThan(stored.bytes);
+  expect(bytes).toEqual(readFileSync(repeated.outputPath));
+  expect(packedFiles(bytes)).toEqual(packedFiles(readFileSync(stored.outputPath)));
+});
+
 test("skin build and archive retain frozen schema/token validation and exact bytes", async () => {
   const legacy = fixture(), modern = fixture();
   for (const root of [legacy, modern]) {

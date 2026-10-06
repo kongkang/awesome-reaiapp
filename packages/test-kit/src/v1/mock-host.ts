@@ -1,3 +1,4 @@
+import workflowSchema from "@reai/app-sdk/developer-workflow-schema";
 /**
  * Mock Host —— 在测试里扮演 Host 的那一侧。
  *
@@ -20,8 +21,23 @@ import {
   type HostMessage,
   type RegistrationReport,
   type DeveloperPlatformRequest,
+  type DeveloperWorkflowRequest,
   type WireError,
 } from "@reai/app-sdk/v1";
+import { MockNetworkUploads } from "./network-upload";
+
+export interface MockNetworkResponse {
+  status: number;
+  statusText?: string;
+  headers?: Record<string, string>;
+  bodyBase64?: string;
+  url?: string;
+}
+export type MockNetworkHandler = (input: {
+  request: Readonly<Record<string, unknown>>;
+  body: Blob;
+  signal: AbortSignal;
+}) => MockNetworkResponse | Promise<MockNetworkResponse>;
 
 export type DeveloperPlatformMockHandler = (
   request: DeveloperPlatformRequest,
@@ -50,13 +66,11 @@ export interface MockHostOptions {
    */
   appsStatus?: { installed: boolean; enabled: boolean };
   /** http.fetch 的确定性响应；测试不访问真实网络。 */
-  networkResponse?: {
-    status: number;
-    statusText?: string;
-    headers?: Record<string, string>;
-    bodyBase64?: string;
-    url?: string;
-  };
+  networkResponse?: MockNetworkResponse;
+  /** Explicit synthetic response fixture. It must not call a real network service. */
+  networkHandler?: MockNetworkHandler;
+  /** Controlled clock for lazy upload expiry checks; defaults to Date.now. */
+  networkUploadNow?: () => number;
   /**
    * 开放平台确定性 fixture 的唯一入口。只有测试显式注入时才可成功；缺省与
    * F3A 产品 Host 一样 fail closed，不提供环境变量或隐式产品开关。
@@ -169,6 +183,25 @@ function requireNonEmpty(record: Record<string, unknown>, key: string, max = 500
 
 function validateDeveloperPlatformRequest(method: string, params: unknown): DeveloperPlatformRequest {
   switch (method) {
+    case RequestMethod.DeveloperPlatformWorkflow: {
+      const record = developerPlatformRecord(params, ["action", "input"]);
+      const schema=(workflowSchema.requests as Record<string, unknown>)[String(record.action)];
+      const matches=(value:unknown,s:any):boolean=>{
+        if(!s)return false;
+        if(s.anyOf)return s.anyOf.some((x:any)=>matches(value,x));
+        if('const' in s)return value===s.const;
+        if(s.type==='null')return value===null;
+        if(s.type==='undefined')return value===undefined;
+        if(s.type==='array')return Array.isArray(value)&&value.length<=1000&&value.every(v=>matches(v,s.items));
+        if(s.type==='object')return !!value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).every(k=>k in s.fields)&&Object.entries(s.fields).every(([k,f]:[string,any])=>f.optional&&!(k in value)||matches((value as any)[k],f.schema));
+        return typeof value===s.type;
+      };
+      if(typeof record.action!=='string'||!matches(record.input,schema))return developerPlatformInvalid("Invalid workflow operation");
+      const input=record.input as Record<string,unknown>;
+      for(const key of ['operationId','teamId','productId','managementClientId','releaseId','submissionId','requestId','idempotencyKey','expectedCurrentPublicRevisionId','userId','testerUserId','fileId','artifactId'])if(input[key]!=null)requireUuid(input,key);
+      for(const key of ['page','pageSize','settlementPage'])if(input[key]!=null&&(!Number.isInteger(input[key])||Number(input[key])<1||Number(input[key])>(key==='pageSize'?50:10000)))return developerPlatformInvalid("Invalid workflow page");
+      return { method, params: record as unknown as DeveloperWorkflowRequest };
+    }
     case RequestMethod.DeveloperPlatformContextGet:
       return {
         method,
@@ -236,6 +269,46 @@ function validateDeveloperPlatformRequest(method: string, params: unknown): Deve
       return {
         method,
         params: record as { teamId: string; managementClientId: string },
+      };
+    }
+    case RequestMethod.DeveloperPlatformTestersList: {
+      const record = developerPlatformRecord(params, ["teamId", "productId"]);
+      requireUuid(record, "teamId");
+      requireUuid(record, "productId");
+      return { method, params: record as { teamId: string; productId: string } };
+    }
+    case RequestMethod.DeveloperPlatformTestersAdd: {
+      const record = developerPlatformRecord(params, [
+        "teamId",
+        "productId",
+        "userId",
+        "idempotencyKey",
+      ]);
+      requireUuid(record, "teamId");
+      requireUuid(record, "productId");
+      requireUuid(record, "userId");
+      requireNonEmpty(record, "idempotencyKey", 128);
+      if (!/^[A-Za-z0-9._-]+$/.test(record["idempotencyKey"] as string)) {
+        developerPlatformInvalid("idempotencyKey 只允许 ASCII 字母、数字、点、下划线和连字符");
+      }
+      return {
+        method,
+        params: record as {
+          teamId: string;
+          productId: string;
+          userId: string;
+          idempotencyKey: string;
+        },
+      };
+    }
+    case RequestMethod.DeveloperPlatformTestersRemove: {
+      const record = developerPlatformRecord(params, ["teamId", "productId", "testerUserId"]);
+      requireUuid(record, "teamId");
+      requireUuid(record, "productId");
+      requireUuid(record, "testerUserId");
+      return {
+        method,
+        params: record as { teamId: string; productId: string; testerUserId: string },
       };
     }
     default:
@@ -306,6 +379,7 @@ function matchesNetworkEndpoint(
 
 export class MockHost {
   private readonly options: MockHostOptions;
+  private readonly networkUploads: MockNetworkUploads;
   private readonly handlers = new Set<(message: HostMessage) => void>();
   private readonly storage = new Map<string, unknown>();
   private readonly mounts = new Map<string, SurfaceObservation>();
@@ -601,6 +675,7 @@ export class MockHost {
 
   constructor(options: MockHostOptions) {
     this.options = options;
+    this.networkUploads = new MockNetworkUploads((code, message) => new MockHostError(message, code), options.networkUploadNow);
     this.uiLocale = options.locale ?? "zh";
     this.voiceInputStatus = options.voiceInputStatus ?? {
       phase: "idle",
@@ -897,6 +972,7 @@ export class MockHost {
 
   /** 停用：触发 deactivate 并跑完清理。 */
   async disable(): Promise<void> {
+    this.networkUploads.dispose();
     this.dispatch({ type: "deactivate" });
     await flush();
     await this.running?.dispose();
@@ -909,6 +985,28 @@ export class MockHost {
 
   private dispatch(message: HostMessage): void {
     for (const handler of [...this.handlers]) handler(message);
+  }
+
+  private checkUploadScope(method: string, request: Record<string, unknown>): void {
+    if (!this.options.manifest.permissions?.some(permission => permission.id === "http.fetch@1")) {
+      this.rejections.push({ method, reason: "Manifest 未声明 http.fetch@1" });
+      throw new MockHostError("Manifest 未声明 http.fetch@1", "NETWORK_PERMISSION_REQUIRED");
+    }
+    if (!matchesNetworkEndpoint(this.options.manifest, request)) {
+      this.rejections.push({ method, reason: "请求未命中 Manifest network endpoint" });
+      throw new MockHostError("请求未命中 Manifest network endpoint", "NETWORK_ENDPOINT_NOT_DECLARED");
+    }
+  }
+
+  private async mockNetworkResponse(input: Parameters<MockNetworkHandler>[0]): Promise<MockNetworkResponse> {
+    const response = this.options.networkHandler ? await this.options.networkHandler(input) : this.options.networkResponse;
+    return {
+      status: response?.status ?? 200,
+      statusText: response?.statusText ?? "OK",
+      headers: structuredClone(response?.headers ?? { "content-type": "text/plain" }),
+      bodyBase64: response?.bodyBase64 ?? "",
+      url: response?.url ?? String(input.request["url"]),
+    };
   }
 
   private async handleRequest(method: string, params: unknown): Promise<unknown> {
@@ -995,11 +1093,15 @@ export class MockHost {
           },
         };
       }
+      case RequestMethod.DeveloperPlatformWorkflow:
       case RequestMethod.DeveloperPlatformProjectsList:
       case RequestMethod.DeveloperPlatformScopesList:
       case RequestMethod.DeveloperPlatformProductsList:
       case RequestMethod.DeveloperPlatformProductsCreate:
-      case RequestMethod.DeveloperPlatformClientsGet: {
+      case RequestMethod.DeveloperPlatformClientsGet:
+      case RequestMethod.DeveloperPlatformTestersList:
+      case RequestMethod.DeveloperPlatformTestersAdd:
+      case RequestMethod.DeveloperPlatformTestersRemove: {
         this.requireDeveloperPlatformCapability(method);
         const request = validateDeveloperPlatformRequest(method, params);
         this.developerPlatformRequests.push(request);
@@ -1077,16 +1179,21 @@ export class MockHost {
           throw new MockHostError("请求未命中 Manifest network endpoint");
         }
         this.networkRequests.push({ ...p });
-        return {
-          status: this.options.networkResponse?.status ?? 200,
-          statusText: this.options.networkResponse?.statusText ?? "OK",
-          headers: this.options.networkResponse?.headers ?? { "content-type": "text/plain" },
-          bodyBase64: this.options.networkResponse?.bodyBase64 ?? "",
-          url: this.options.networkResponse?.url ?? String(p["url"]),
-        };
+        const body = this.options.networkHandler && typeof p["bodyBase64"] === "string"
+          ? new Blob([Buffer.from(p["bodyBase64"], "base64")]) : new Blob();
+        return this.mockNetworkResponse({ request: structuredClone(p), body, signal: new AbortController().signal });
       }
+      case RequestMethod.HttpUploadStart: {
+        const opened = this.networkUploads.start(params, request => this.checkUploadScope(method, request));
+        this.networkRequests.push({ ...opened.request, bodyBytes: opened.bodyBytes, uploadId: opened.uploadId });
+        return { uploadId: opened.uploadId };
+      }
+      case RequestMethod.HttpUploadChunk:
+        return this.networkUploads.chunk(params, request => this.checkUploadScope(method, request));
+      case RequestMethod.HttpUploadFinish:
+        return this.networkUploads.finish(params, request => this.checkUploadScope(method, request), input => this.mockNetworkResponse(input));
       case RequestMethod.HttpCancel:
-        return { cancelled: true };
+        return this.networkUploads.cancel(params);
       case RequestMethod.VoicePreparing:
         this.voiceInputRequests.push({ method, params });
         return undefined;

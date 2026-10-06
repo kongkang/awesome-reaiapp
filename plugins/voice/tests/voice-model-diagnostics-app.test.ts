@@ -67,6 +67,7 @@ test("自定义模型：复制诊断、落盘、交给 Host 的诊断字段与�
   wire.handleRequest = async (method, params) => {
     sent.push(JSON.stringify({ method, params }));
     if (method === "clipboard.writeText") clipboard.push(String(params.text));
+    if (method === "environment.get") return { developerMode: true };
     const result = await original(method, params);
     return method === "voice.models.list" ? { models: [structuredClone(CUSTOM_MODEL)] } : result;
   };

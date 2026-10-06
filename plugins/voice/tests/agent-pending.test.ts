@@ -26,3 +26,10 @@ test("journal refuses a ninth unknown admission and cannot overwrite a key with 
   await expect(f.journal().save("ninth",request)).rejects.toMatchObject({code:"AGENT_PENDING_CAPACITY"});
   await expect(f.journal().save("task-0",request)).rejects.toMatchObject({code:"AGENT_PENDING_IDENTITY_CONFLICT"});
 });
+
+test("typed attachment journal survives restart unchanged and refuses URLs or changed lease identity",async()=>{
+ const f=fixture();const attachmentInput={schemaVersion:1 as const,admission:{schemaVersion:1 as const,opaqueBinding:'a'.repeat(64),revision:2,modes:['image' as const]},parts:[{kind:'image' as const,name:'synthetic.png',mimeType:'image/png' as const,leaseId:'b'.repeat(64),sha256:'c'.repeat(64),byteLength:100}]};
+ await f.journal().save('typed',{...request,attachmentInput});expect((await f.journal().get('typed')).request.attachmentInput).toEqual(attachmentInput);
+ await expect(f.journal().save('typed',{...request,attachmentInput:{...attachmentInput,admission:{...attachmentInput.admission,revision:3}}})).rejects.toMatchObject({code:'AGENT_PENDING_IDENTITY_CONFLICT'});
+ await expect(f.journal().save('invalid',{...request,attachmentInput:{...attachmentInput,url:'unused'} as any})).rejects.toMatchObject({code:'AGENT_ATTACHMENT_CONTENT_INVALID'});
+});

@@ -1,5 +1,7 @@
 import type { AgentTurnStart, KeyValueStore } from "@reai/app-sdk/v1";
 
+import { parseVoiceAttachmentTurnInput } from "./voice-attachment-input";
+
 const KEY = "agent-pending-admissions-v2";
 const RETENTION_MS = 24 * 60 * 60 * 1000;
 const LIMIT = 8;
@@ -22,6 +24,7 @@ export class PendingAgentRequests {
       && typeof value.cancelled === "boolean" && typeof value.request?.sessionId === "string" && value.request.sessionId.startsWith("agent2-") && owned.has(value.request.sessionId)
       && typeof value.request?.idempotencyKey === "string" && value.request.idempotencyKey.length <= 128
       && typeof value.request?.text === "string" && value.request.text.length <= 64 * 1024
+      && (value.request.attachmentInput === undefined || parseVoiceAttachmentTurnInput(value.request.attachmentInput) !== undefined)
       && [undefined, "caller", "host"].includes(value.request.taskPresentation)).slice(0, LIMIT);
   }
   private async edit(change: (rows: PendingAgentRequest[]) => PendingAgentRequest[]): Promise<void> {
@@ -37,6 +40,7 @@ export class PendingAgentRequests {
     throw failure("AGENT_PENDING_STORAGE_CONFLICT");
   }
   async save(taskId: string, request: AgentTurnStart, cancelled = false): Promise<void> {
+    if (request.attachmentInput !== undefined && !parseVoiceAttachmentTurnInput(request.attachmentInput)) throw failure("AGENT_ATTACHMENT_CONTENT_INVALID");
     await this.edit(rows => {
       const old = rows.find(row => row.taskId === taskId);
       if (old && JSON.stringify(old.request) !== JSON.stringify(request)) throw failure("AGENT_PENDING_IDENTITY_CONFLICT");

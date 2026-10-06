@@ -1,5 +1,5 @@
 /**
- * 识别结果有没有「真内容」（2026-09-29 真机反馈）：Agent / 翻译命令拿到没说话、只有标点或语气词、
+ * 识别结果有没有「真内容」（2026-09-29 真机反馈）：Agent 命令拿到没说话、只有标点或语气词、
  * 或只剩一个字的结果时，不值得为它建会话、调模型。纯函数，不碰任何状态。
  *
  * 规则：
@@ -75,4 +75,21 @@ export function classifyUtterance(text: string): UtteranceContent {
   const segments = text.normalize("NFKC").toLowerCase().split(SEPARATORS).filter(Boolean);
   if (segments.length === 0 || segments.every(isFillerSegment)) return "empty";
   return visibleCharsUpTo2(segments.join("")) <= 1 ? "trivial" : "substantive";
+}
+
+/** Conservative short acknowledgements; internal punctuation/newlines are significant. */
+export function isConfirmationUtterance(text: string): boolean {
+  const normalized = text.normalize("NFKC").toLowerCase().replace(/^[\p{P}\p{Z}\s]+|[\p{P}\p{Z}\s]+$/gu, "");
+  return ["嗯", "嗯嗯", "嗯哼", "mhm", "mm"].includes(normalized);
+}
+
+/** Includes repeated acknowledgements, before applying the conservative exception. */
+export function isPureFillerUtterance(text: string): boolean {
+  const segments = text.normalize("NFKC").toLowerCase().split(SEPARATORS).filter(Boolean);
+  return segments.length > 0 && segments.every(isFillerSegment);
+}
+
+/** Translation accepts useful single characters and short confirmations, unlike Agent. */
+export function shouldTranslateUtterance(text: string): boolean {
+  return isConfirmationUtterance(text) || classifyUtterance(text) !== "empty";
 }

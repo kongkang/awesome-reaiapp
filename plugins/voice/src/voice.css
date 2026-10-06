@@ -969,6 +969,15 @@ button:disabled {
 .task-copy:hover { color: var(--accent, #5c5ce0); border-color: var(--accent, #5c5ce0); }
 .task-copy.done { color: var(--accent, #5c5ce0); border-color: var(--accent, #5c5ce0); background: var(--accent-soft, rgba(92,92,224,.07)); }
 .task-copy.fail { color: var(--alert, #d85b5b); border-color: var(--alert, #d85b5b); }
+/* 列表里的复制按钮默认隐身但保留占位，鼠标移到该条（或键盘聚焦到该条）才出现并可点
+   （2026-10-06 用户裁定）；详情页的复制按钮不在 .task-item 里，不受影响。
+   没有悬停能力的设备（触屏）照常常显，否则永远点不到。 */
+.task-item .task-copy-row { opacity: 0; pointer-events: none; transition: opacity .12s ease; }
+.task-item:hover .task-copy-row,
+.task-item:focus-within .task-copy-row { opacity: 1; pointer-events: auto; }
+@media (hover: none) {
+  .task-item .task-copy-row { opacity: 1; pointer-events: auto; }
+}
 
 /* R9：稿的 56px 格子 + flex-shrink:0——值回到 `command / input`（7 字母以内），
    不再是 9 字母的 COMPLETED 溢出格子压到时间上（「COMPLETED2 分钟前」的根因）。
@@ -2107,40 +2116,6 @@ button:disabled {
   padding: 10px var(--chat-dock-x, 24px) 0;
 }
 
-/* F02/F04：对话页输入坞上方的工作范围 / Agent 选择条（沿用 chat 页 token）。 */
-.chat-scope {
-  flex: 0 0 auto;
-  padding: 8px var(--chat-dock-x, 24px) 0;
-  font-size: 12px;
-}
-.chat-scope-toggle {
-  color: var(--text-secondary);
-  background: transparent;
-  border: 1px solid var(--divider, rgba(92, 92, 224, .08));
-  border-radius: 8px;
-  padding: 7px 10px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.chat-current-agent { display: inline-block; margin-inline-end: 10px; color: var(--text-secondary, #67667e); }
-.chat-scope-toggle:disabled { opacity: .55; cursor: default; }
-.chat-scope-toggle:focus-visible, .chat-agent-select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.chat-scope-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 0 2px;
-}
-.chat-agent-label { display: flex; align-items: center; gap: 8px; }
-.chat-agent-select { border: 1px solid var(--divider, rgba(92, 92, 224, .08)); border-radius: 6px; padding: 6px; background: var(--bg, #f4f3f9); color: var(--text-primary, #1c1c2e); }
-.chat-scope-note { flex-basis: 100%; margin: 0; color: var(--text-secondary); line-height: 1.5; }
 .chat-approval-status { margin: 0; padding: 8px var(--chat-dock-x, 24px) 0; font-size: 12px; color: var(--text-secondary); }
 
 /* ═══ Context 段详情（A3-22/23）：只读时间线 + 原文·总结两栏 —— 结构贴设计稿
@@ -3248,3 +3223,17 @@ button:disabled {
 .chat-run-status {
   padding: 4px 0;
 }
+
+/* 普通用户保留实际进度与用时；技术诊断在开发者模式中单独渲染。 */
+.voice-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.voice-progress:empty { display: none; }
+
+/* Utterance start times retain seconds; expanded fragments retain precise ranges. */
+.ctx-utterance-line .ctx-line-ts { width: 64px; flex-shrink: 0; }
+.ctx-fragments { margin-top: -8px; }

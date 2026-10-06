@@ -457,19 +457,18 @@ describe("Chat detail（A3-15）：命令任务详情页", () => {
 });
 
 describe("输入坞（A3-16）", () => {
-  test("中文文案随语言包；附件钮 disabled 并带说明", () => {
-    const harness = mount({ commandHistory: [commandItem()] });
+  test("中文文案随语言包；未知模型附件能力时隐藏入口", () => {
+    const harness = mount({ commandHistory: [commandItem({ commandId: "voice.command.agent" })] });
     openChat(harness);
     expect(harness.root.querySelector(".chat-input")?.getAttribute("placeholder"))
       .toBe("说点什么，或输入文字…");
-    // 坞是 [+][输入框][麦克风] 三件（稿 .chat-input-bar）。
+    // 未确认模型能力时只保留输入框与麦克风。
     expect(
       Array.from(harness.root.querySelector(".chat-input-bar")?.children ?? []).map((node) => node.className),
-    ).toEqual(["chat-attach", "chat-input", "chat-mic"]);
-    // 命令合同还没有附件通道：钮在、点不动、说明写在 title 上。
-    const attach = harness.root.querySelector(".chat-attach") as HTMLButtonElement;
-    expect(attach.disabled).toBeTrue();
-    expect(attach.title).toBe("附件通道尚未开放");
+    ).toEqual(["chat-input", "chat-mic"]);
+    // 未知能力没有可点击或 disabled 的附件入口。
+    expect(harness.root.querySelector(".chat-attach")).toBeNull();
+    expect(harness.root.querySelector("input[type=file]")).not.toBeNull();
     harness.dispose();
   });
 

@@ -101,6 +101,7 @@ function mount(overrides: Record<string, unknown> = {}, extraActions: Partial<Vo
     ...extraActions,
   } as unknown as VoiceViewActions;
   const state = createDefaultVoiceViewState({
+    developerMode: true,
     models: [model("active")],
     permissions: READY_PERMISSIONS,
     sourceReady: true,

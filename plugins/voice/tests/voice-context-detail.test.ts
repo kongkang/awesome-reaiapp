@@ -178,19 +178,19 @@ describe("Context 段详情（A3-22）：逐句时间线", () => {
     const harness = mount({ recordings: [item], recordingsTotal: 1 });
     openContextDetail(harness);
     switchPane(harness, "raw");
-    const texts = Array.from(harness.root.querySelectorAll(".ctx-line .ctx-line-tx"))
+    const texts = Array.from(harness.root.querySelectorAll(".ctx-utterance-line .ctx-line-tx"))
       .map((node) => node.textContent);
     expect(texts).toEqual([
       "我们先把发布节奏定下来，固件和 App 要不要一起出。",
       "那就一起。",
       "行，那就这样。",
     ]);
-    const stamps = Array.from(harness.root.querySelectorAll(".ctx-line .ctx-line-ts"))
+    const stamps = Array.from(harness.root.querySelectorAll(".ctx-utterance-line .ctx-line-ts"))
       .map((node) => node.textContent);
     expect(stamps).toEqual([
-      clockTimeOf(item.wallStartMs),
-      clockTimeOf(item.wallStartMs + 2 * 60_000 + 5_000),
-      clockTimeOf(item.wallStartMs - 30_000),
+      "14:03:00",
+      "14:05:05",
+      "14:02:30",
     ]);
     // 有真实数据时不再需要「句子之间没有各自的时间戳」那行脚注。
     expect(harness.root.querySelector(".ctx-lines-note")).toBeNull();
@@ -217,21 +217,20 @@ describe("Context 段详情（A3-22）：逐句时间线", () => {
     play.click();
     expect(harness.loaded).toContain(item.id);
 
-    // 逐句时间线：\n 是 Host 落盘的真实分片边界，段内再按句末标点切（一句一行）。
-    const texts = Array.from(harness.root.querySelectorAll(".ctx-line .ctx-line-tx"))
+    // 旧记录按原始换行保留发言边界，行内句子不再拆成独立记录。
+    const texts = Array.from(harness.root.querySelectorAll(".ctx-utterance-line .ctx-line-tx"))
       .map((node) => node.textContent);
     expect(texts).toEqual([
       "我们先把发布节奏定下来，固件和 App 要不要一起出。",
-      "那就一起。",
-      "发布说明写一份，固件那条单独列一节。",
+      "那就一起。发布说明写一份，固件那条单独列一节。",
       "行，那就这样。",
     ]);
 
     // 时间列：第一句是段起始的真实时刻，其余句子留空——句级时间戳不存在，不内插编造。
-    const stamps = Array.from(harness.root.querySelectorAll(".ctx-line .ctx-line-ts"))
+    const stamps = Array.from(harness.root.querySelectorAll(".ctx-utterance-line .ctx-line-ts"))
       .map((node) => node.textContent);
-    expect(stamps[0]).toBe(clockTimeOf(item.wallStartMs));
-    expect(stamps.slice(1)).toEqual(["", "", ""]);
+    expect(stamps[0]).toBe("14:03:00");
+    expect(stamps.slice(1)).toEqual(["", ""]);
 
     // 数据边界在界面上有说明：空着的时间列读得出「没有」，不是排版坏了。
     expect(harness.root.querySelector(".ctx-lines-note")?.textContent)
@@ -617,7 +616,7 @@ describe("Context 空内容折叠", () => {
       .toEqual(["。","……","。","。"]);
     const spoken=harness.root.querySelector(".ctx-lines > .ctx-line")!;
     expect(spoken.querySelector(".ctx-line-tx")?.textContent).toBe("不用贴。");
-    expect(spoken.querySelector(".ctx-line-ts")?.textContent).toBe("14:03");
+    expect(spoken.querySelector(".ctx-line-ts")?.textContent).toBe("14:03:01");
     const ordered=Array.from(harness.root.querySelectorAll(".ctx-lines > *"));
     expect(ordered[0]).toBe(merged);expect(ordered[1]).toBe(spoken);
     harness.update(createDefaultVoiceViewState({recordings:[item]}));
@@ -635,4 +634,51 @@ describe("Context 空内容折叠", () => {
     harness.update(createDefaultVoiceViewState({recordings:[recording({transcriptText:".",sentences})]}));
     expect(harness.root.querySelector<HTMLDetailsElement>('[data-context-key="rec-1:all-empty"]')?.open).toBeTrue();harness.dispose();
   });
+});
+
+
+test("现场连续发言合并、语气词折叠、短确认保留，原片可回查且刷新保留展开", async () => {
+  const item = recording({ transcriptStatus: "complete", transcriptText: "我们先\n把发布节奏\n定下来。\n嗯\n呃\n嗯", sentences: [
+    { text: "我们先", startMs: 0, endMs: 600 },
+    { text: "把发布节奏", startMs: 650, endMs: 1100 },
+    { text: "定下来。", startMs: 1200, endMs: 1900 },
+    { text: "嗯", startMs: 4000, endMs: 4400 },
+    { text: "呃", startMs: 4500, endMs: 4900 },
+    { text: "嗯", startMs: 8000, endMs: 8500 },
+  ] });
+  const before = JSON.stringify(item);
+  const harness = mount({ recordings: [item] });
+  try {
+    openContextDetail(harness); switchPane(harness, "raw");
+    const rows = Array.from(harness.root.querySelectorAll(".ctx-utterance-line"));
+    expect(rows.map(n => n.querySelector(".ctx-line-tx")?.textContent)).toEqual(["我们先把发布节奏定下来。", "嗯"]);
+    expect(rows.map(n => n.querySelector(".ctx-line-ts")?.textContent)).toEqual(["14:03:00", "14:03:08"]);
+    const filler = harness.root.querySelector<HTMLDetailsElement>('[data-context-key="rec-1:filler:3,4"]')!;
+    expect(filler.open).toBeFalse();
+    expect(filler.querySelector("summary")?.textContent).toBe("14:03:04 语气词片段 · 2 条原始片段");
+    const originals = harness.root.querySelector<HTMLDetailsElement>('[data-context-key="rec-1:fragments:0,1,2"]')!;
+    originals.open = true;
+    expect(Array.from(originals.querySelectorAll(".ctx-line-tx")).map(n => n.textContent)).toEqual(["我们先", "把发布节奏", "定下来。"]);
+    expect(originals.querySelector(".ctx-line-ts")?.textContent).toBe("14:03:00.000～14:03:00.600");
+    harness.update(createDefaultVoiceViewState({ recordings: [item] }));
+    expect(harness.root.querySelector<HTMLDetailsElement>('[data-context-key="rec-1:fragments:0,1,2"]')?.open).toBeTrue();
+    expect(harness.root.querySelector(".ctx-original-text")?.textContent).toBe(item.transcriptText);
+    expect(JSON.stringify(item)).toBe(before);
+    await new Promise(resolve => setTimeout(resolve, 0));
+  } finally { harness.dispose(); }
+});
+
+
+test("旧记录忽略展示空行，首条发言仍标起始时间，整段空白原文保留", async () => {
+  const item = recording({ transcriptText: "\n \n第一句。第二句。\n\n另一段。\n" });
+  const harness = mount({ recordings: [item] });
+  try {
+    openContextDetail(harness); switchPane(harness, "raw");
+    const rows = Array.from(harness.root.querySelectorAll(".ctx-utterance-line"));
+    expect(rows.map(n => n.querySelector(".ctx-line-tx")?.textContent)).toEqual(["第一句。第二句。", "另一段。"]);
+    expect(rows.map(n => n.querySelector(".ctx-line-ts")?.textContent)).toEqual(["14:03:00", ""]);
+    expect(harness.root.querySelectorAll('[data-context-key*="legacy:"]')).toHaveLength(0);
+    expect(harness.root.querySelector(".ctx-original-text")?.textContent).toBe(item.transcriptText);
+    await new Promise(resolve => setTimeout(resolve, 0));
+  } finally { harness.dispose(); }
 });

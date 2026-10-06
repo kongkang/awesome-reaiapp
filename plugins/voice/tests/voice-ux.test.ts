@@ -607,14 +607,12 @@ describe("Voice 模型 readiness 与设置", () => {
         { id: "task-b", transcript: "第二条", reply: "回复二", status: "completed" as const, createdAt: at, agentSessionId: "pi-b" },
       ],
     };
-    // 带「当前 Agent + 更换 Agent」一行：它的展开钮在新旧会话里处在同一 DOM 位置，
-    // 重渲染的「恢复旧焦点」会把它选回来，正好盖掉 Host 要求的输入框聚焦。
-    const harness = mount([model("active")], history, { onChangeConversationBackend: async () => undefined });
+    // 麦克风在新旧会话里处在同一 DOM 位置，旧焦点恢复不能盖掉 Host 要求的输入框聚焦。
+    const harness = mount([model("active")], history);
     expect(harness.view.openConversation("task-a")).toBeTrue();
-    const toggle = harness.root.querySelector<HTMLButtonElement>(".chat-scope-toggle");
-    expect(toggle).not.toBeNull();
-    toggle!.focus();
-    expect(document.activeElement).toBe(toggle);
+    const mic = harness.root.querySelector<HTMLButtonElement>(".chat-mic")!;
+    mic.focus();
+    expect(document.activeElement).toBe(mic);
 
     expect(harness.view.openConversation("task-b", { focusComposer: true })).toBeTrue();
     const active = document.activeElement as HTMLElement | null;
@@ -1414,11 +1412,13 @@ describe("存档对稿（A3-9 / A3-11 / A3-12 / R9）", () => {
   });
 
   test("V1.8.7：成功条目按内容类型显示明确复制动作，点击不打开详情", () => {
+    const now = Date.now();
     const harness = mount([model("active")], {
       history: [historyItem({ transcript: "听写正文" })],
       commandHistory: [
         commandItem({
           id: "command",
+          createdAt: new Date(now - 1).toISOString(),
           transcript: "普通问题",
           reply: "普通答案",
           messages: [
@@ -1428,6 +1428,7 @@ describe("存档对稿（A3-9 / A3-11 / A3-12 / R9）", () => {
         }),
         commandItem({
           id: "translation",
+          createdAt: new Date(now).toISOString(),
           // 历史里真实落的是内置命令 ID，不是 Host 事件 ID com.reai.voice.command.translate。
           commandId: BUILTIN_VOICE_COMMANDS.translate,
           transcript: "翻译原文",
@@ -1443,15 +1444,20 @@ describe("存档对稿（A3-9 / A3-11 / A3-12 / R9）", () => {
     expect(harness.root.querySelector(".input-detail")).toBeNull();
 
     const commands = Array.from(harness.root.querySelectorAll<HTMLElement>(".command-history-item"));
-    expect(Array.from(commands[0]?.querySelectorAll(".task-copy") ?? []).map((node) => node.textContent)).toEqual([
+    // 翻译更新，实际排在前面；复制动作按业务条目验证，不依赖 fixture 数组顺序。
+    const command = commands.find((row) => row.querySelector(".task-name")?.textContent === "“普通问题”");
+    const translation = commands.find((row) => row.querySelector(".task-name")?.textContent === "“翻译原文”");
+    expect(command).toBeDefined();
+    expect(translation).toBeDefined();
+    expect(Array.from(command?.querySelectorAll(".task-copy") ?? []).map((node) => node.textContent)).toEqual([
       "复制问题",
       "复制答案",
     ]);
-    expect(Array.from(commands[1]?.querySelectorAll(".task-copy") ?? []).map((node) => node.textContent)).toEqual([
+    expect(Array.from(translation?.querySelectorAll(".task-copy") ?? []).map((node) => node.textContent)).toEqual([
       "复制原文",
       "复制译文",
     ]);
-    (commands[0]?.querySelectorAll(".task-copy")[1] as HTMLButtonElement).click();
+    (command?.querySelectorAll(".task-copy")[1] as HTMLButtonElement).click();
     expect(harness.copiedTexts).toEqual(["听写正文", "普通答案"]);
     expect(harness.root.querySelector(".chat-view")).toBeNull();
     harness.view.dispose();

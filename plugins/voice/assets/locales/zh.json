@@ -295,6 +295,7 @@
     "valueSegmentsValue": "{value0} · 由 {value1} 段合成",
     "couldNotSendTheSummaryToAgent": "没能把总结交给 agent：{value0}",
     "nothingWasHeardPleaseSayItAgain": "没有听清，请再说一次",
+    "emptyTranslationNotSent": "未识别到可翻译内容，这次没有发送",
     "emptyUtteranceNotSent": "你刚才好像没有说话，这次没有发送",
     "theVoiceInterfaceIsNotOpen": "Voice 界面没有打开",
     "inputDetails": "输入详情",
@@ -717,6 +718,8 @@
     "characterCount": "{count} 字",
     "contextNoTextYet": "暂无有效文字",
     "contextPendingTranscription": "等待本地转写",
+    "contextFillerFragments": "语气词片段 · {count} 条原始片段",
+    "contextSourceFragments": "展开 {count} 条原始片段",
     "contextNoContent": "无内容",
     "contextOriginalText": "展开原始转写 · {count} 个原始字符（含标点和空白）",
     "contextDigestRawCharacters": " · {count} 个原始字符（含标点） · {points} 条要点",
@@ -724,6 +727,7 @@
     "cloudAccountPrice": "{price} 美分/秒 · {reason}",
     "cloudAccountPriceUnavailable": "当前账号价格暂不可用，请刷新重试。",
     "cloudAccountPriceFreeOnly": "{quote} · 此模型仅在免费时使用",
+    "cloudModelFreeOnly": "此模型仅在免费时使用",
     "cloudPricingReason": {
       "subscriptionPrivilege": "当前订阅权益价",
       "subscriptionPrice": "当前订阅价格",
@@ -905,6 +909,32 @@
         "runProgram": "运行文本处理程序",
         "unknown": "使用工具 {tool}"
       }
+    },
+    "attachments": {
+      "reading": "读取中…",
+      "ready": "附件已准备，可以发送",
+      "remove": "移除",
+      "errors": {
+        "VOICE_ATTACHMENT_EMPTY": "文件为空。",
+        "VOICE_ATTACHMENT_TOO_LARGE": "文件原始大小不能超过 64 KiB；发送时还有字符与总字节限制。",
+        "VOICE_ATTACHMENT_NAME_INVALID": "不支持此文件名。",
+        "VOICE_ATTACHMENT_READ_FAILED": "文件读取失败，请移除后重新选择。",
+        "VOICE_ATTACHMENT_ENCODING_UNSUPPORTED": "请使用 UTF-8 文本或带 BOM 的 UTF-16 文本。",
+        "VOICE_ATTACHMENT_BINARY_UNSUPPORTED": "此文件不是可读取的文本。",
+        "VOICE_ATTACHMENT_EXTRACTION_REQUIRED": "此文件无法作为受支持的文本读取。",
+        "VOICE_ATTACHMENT_COUNT_EXCEEDED": "每条消息最多选择四个文件。",
+        "VOICE_ATTACHMENT_TURN_TOO_LARGE": "文件、消息和上下文超出此 Agent 请求的文本限制（24000 字符 / 64 KiB），请缩小文件或缩短消息。",
+        "VOICE_ATTACHMENT_DOCUMENT_INVALID": "文件损坏或格式不受支持，无法提取内容。",
+        "VOICE_ATTACHMENT_DOCUMENT_LIMIT": "文档超出提取或发送限制；内容未截断，请选择较小文件。",
+        "VOICE_ATTACHMENT_DOCUMENT_NO_TEXT": "文件没有可提取的文本；扫描 PDF 的图片识别尚不支持。",
+        "VOICE_ATTACHMENT_DOCUMENT_TIMEOUT": "文档提取超时，请移除后重选或使用较小文件。",
+        "VOICE_ATTACHMENT_DOCUMENT_UNAVAILABLE": "当前环境无法运行文档解析，请重选文本文件。",
+        "VOICE_ATTACHMENT_DOCUMENT_ENCRYPTED": "加密或密码保护的文件暂不支持，请选择已解密副本。",
+        "VOICE_ATTACHMENT_DOCUMENT_TOO_LARGE": "PDF 或 Excel 文件原始大小不能超过 5 MiB。",
+        "VOICE_ATTACHMENT_SCENE_UNSUPPORTED": "此场景不支持文件附件，仅任务对话可上传。",
+        "VOICE_ATTACHMENT_MODEL_UNCONFIRMED": "尚未确认当前 Agent 模型的附件支持能力。请在设置中启用命令附件并检查当前模型。"
+      },
+      "removeNamed": "移除 {name}"
     }
   },
   "metadata": {

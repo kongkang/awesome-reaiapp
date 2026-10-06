@@ -5,6 +5,8 @@ export type {
   AppManifestLike,
   DeveloperPlatformMockHandler,
   MockHostOptions,
+  MockNetworkResponse,
+  MockNetworkHandler,
   SurfaceObservation,
 } from "./mock-host";
 export { defineContractSuite } from "./contract";

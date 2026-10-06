@@ -125,8 +125,10 @@ for (const route of ["dictation", "translation"] as const) {
           expect(message).not.toContain("VOICE_DELIVER_PERMISSION");
           expect(message).not.toContain("TRANSPORT_UNAVAILABLE");
           if (failure.unavailable && route === "translation") {
-            // 取回卡带登记过的真实码（2.14.3-rc.6：不再抹成类别码），文案仍按「不可用」说明。
-            expect(message).toEndWith(`（${failure.error!.code}）`);
+            // 真实码保留在结构化字段，不混入普通原因。
+            expect(message).not.toContain(failure.error!.code);
+            const card = host.cloudRequests.find(request => request.method === "voice.deliver.present-takeback")?.params as { errorCode?: string };
+            expect(card.errorCode).toBe(failure.error!.code);
           } else {
             expect(message).not.toContain("VOICE_DELIVER");
           }

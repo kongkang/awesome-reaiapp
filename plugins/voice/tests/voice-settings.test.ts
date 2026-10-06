@@ -292,7 +292,7 @@ test('retained download offers resume and preparing offers cancel', async () => 
  h.root.querySelector<HTMLButtonElement>('.local-model-status button')!.click(); expect(cancelled).toBe(1); h.view.dispose();
 });
 
-test("current-account zero price is displayed as a numeric subscription quote in USD cents per second", () => {
+test("cloud model settings list names only and never show account prices", () => {
   const accountModel = { id: "transcribe-account", kind: "transcribe" as const, label: "Current default", isDefault: true,
     pricingContext: "current-account" as const, billingPolicy: "free" as const,
     effectivePrice: { unit: "second" as const, unitPriceCents: "0", baseUnitPriceCents: "0.1", reason: "subscription_price" as const,
@@ -301,8 +301,11 @@ test("current-account zero price is displayed as a numeric subscription quote in
     featureSettings: { ...DEFAULT_VOICE_FEATURE_SETTINGS, cloudModelId: accountModel.id }, cloudModels: [accountModel] });
   try {
     h.view.openSettings();
-    expect(h.root.textContent).toContain("0 美分/秒");
-    expect(h.root.textContent).toContain("当前订阅价格");
+    const options = Array.from(h.root.querySelectorAll<HTMLOptionElement>(".settings-cloud-model option"), o => o.textContent);
+    expect(options).toEqual(["Current default"]);
+    expect(h.root.textContent).not.toContain("美分/秒");
+    expect(h.root.textContent).not.toContain("当前订阅价格");
+    expect(h.root.textContent).toContain("已保存此选项");
     expect(h.root.textContent).not.toContain("永久免费");
   } finally { h.view.dispose(); }
 });

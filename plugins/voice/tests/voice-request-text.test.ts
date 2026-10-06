@@ -6,6 +6,8 @@ import { DEFAULT_SETTINGS } from "../src/data";
 import { VoiceRequestAdmission } from "../src/voice-request-admission";
 import { VoiceRequestTextProvider, type VoiceRequestTextPorts } from "../src/voice-request-text";
 import { registerVoiceRequestTextService, VOICE_REQUEST_TEXT_SERVICE_ID } from "../src/voice-service-registration";
+import zh from "../assets/locales/zh.json";
+import en from "../assets/locales/en.json";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -43,6 +45,41 @@ async function harness(pollMs = 100_000, cleanupRetryMs?: number) {
 }
 
 describe("Voice request-text 原Promise", () => {
+  for (const targetLocale of ["zh", "en"] as const) {
+    for (const scenario of [
+      { code: "CLOUD_MODEL_SELECTION_REQUIRED", wireCode: "CLOUD_MODEL_SELECTION_REQUIRED", resource: "cloud" },
+      { code: "com.other/CLOUD_MODEL_SELECTION_REQUIRED", wireCode: "SERVICE_PROVIDER_FAILED", resource: "generic" },
+      { code: "com.reai.voice/UNREGISTERED_CLOUD_SELECTION", wireCode: "SERVICE_PROVIDER_FAILED", resource: "generic" },
+      { code: "SERVICE_CANCELLED", wireCode: "SERVICE_CANCELLED", resource: "cancelled" },
+    ] as const) {
+      test(`cloud selection service mapping control keeps current locale and code gate: ${scenario.code}/${targetLocale}`, async () => {
+        const h = await harness();
+        let locale: UiLocale = targetLocale === "zh" ? "en" : "zh";
+        const handlers = new Map<string, ServiceHandler>();
+        const services: AppServicesClient = {
+          provide(_serviceId, method, handler) { handlers.set(method, handler as ServiceHandler); },
+          async call<T>() { throw new Error("unused"); },
+        };
+        registerVoiceRequestTextService(services, h.provider, () => locale);
+        h.ports.prepare = async () => {
+          locale = targetLocale;
+          throw { code: scenario.code, userMessage: "private provider detail" };
+        };
+        const resources = targetLocale === "zh" ? zh : en;
+        const expected = scenario.resource === "cloud" ? resources.view.cloudModelsUnavailable
+          : scenario.resource === "cancelled" ? resources.service.cancelled : resources.service.providerFailed;
+        try {
+          const error = await Promise.resolve(handlers.get("request-text")!({ caller, input: input(), signal: new AbortController().signal })).catch(error => error);
+          if (!(error instanceof AppError)) throw new Error("Expected a structured service AppError");
+          expect(error.toWire()).toMatchObject({ code: scenario.wireCode, userMessage: expected, retryable: false });
+          expect(JSON.stringify(error.toWire())).not.toContain("private provider detail");
+          expect(h.actions).toEqual([]);
+          expect(h.busy()).toBeFalse();
+        } finally { h.provider.dispose(); }
+      });
+    }
+  }
+
   for (const stopReason of [undefined, "capture_limit"]) {
     test(`异步结束保留识别错误，立即清理而非等待超时：${stopReason ?? "overlay-finish"}`, async () => {
       const h = await harness(1);

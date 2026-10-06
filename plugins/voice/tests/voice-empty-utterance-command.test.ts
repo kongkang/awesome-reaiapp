@@ -1,5 +1,5 @@
 /**
- * 空话不发请求（2026-09-29 真机反馈，2.14.4-rc.1）：Agent / 翻译命令识别出来是空的、只有标点与语气词、
+ * 空话不发请求（2026-09-29 真机反馈，2.14.4-rc.1）：Agent 命令识别出来是空的、只有标点与语气词、
  * 或只剩一个字时，不建 Agent 会话、不调模型、不写历史、不弹结果面板；中央胶囊给一句提示后收起，
  * Voice 页给一句「你刚才没有说话」，诊断只带固定码与版本，不带用户说的话。
  * 转文本（输入法）保持原样：只有完全为空才不写入，一个字照写。
@@ -65,6 +65,7 @@ async function harness(settings: Partial<VoiceInputSettings> = {}) {
   const clipboard: string[] = [];
   const acks: Array<{ sessionId?: string; at: number }> = [];
   wire.handleRequest = async (method, params) => {
+    if (method === "environment.get") return { developerMode: true };
     if (method === "clipboard.writeText") clipboard.push(String(params.text));
     if (method === "voice.acknowledge-result") acks.push({ sessionId: params.sessionId as string | undefined, at: Date.now() });
     return await original(method, params);
@@ -116,7 +117,6 @@ async function expectNothingSent(h: Harness, sessionId: string) {
 for (const [label, eventId] of [
   ["Agent", "com.reai.voice.command.agent"],
   ["通用命令键（默认 Agent）", "com.reai.voice.toggle-command"],
-  ["翻译", "com.reai.voice.command.translate"],
 ] as const) {
   for (const [kind, transcript] of [
     ["没说话（按键很短 / 识别为空）", ""],
@@ -226,5 +226,46 @@ test("Voice 页：给出「你刚才没有说话」；复制诊断只有固定�
     expect(copied).toContain("VOICE_EMPTY_UTTERANCE");
     expect(copied).toContain(VOICE_PLUGIN_VERSION);
     expect(copied).not.toContain("㗊");
+  } finally { await h.dispose(); }
+});
+
+
+for (const transcript of ["", " \t", "。。。", "嗯嗯嗯", "嗯，嗯", "呃…嗯…呃…", "uh um"]) {
+  test(`翻译过滤纯填充 ${JSON.stringify(transcript)}，仍确认录音会话`, async () => {
+    const h = await harness();
+    try {
+      h.host.setNextVoiceCommandTranscript(transcript);
+      const { sessionId } = await speak(h, "com.reai.voice.command.translate");
+      await expectNothingSent(h, sessionId);
+    } finally { await h.dispose(); }
+  });
+}
+for (const transcript of ["嗯。", "嗯嗯", "mhm", "好", "不", "I", "0", "mum", "嗯，明天开会"]) {
+  test(`翻译保留确认或有效短句 ${JSON.stringify(transcript)}`, async () => {
+    const h = await harness();
+    try {
+      h.host.setNextVoiceCommandTranscript(transcript);
+      await speak(h, "com.reai.voice.command.translate");
+      await until(() => h.commits().length === 1, "翻译完成后写回结果");
+      const turns = h.agentWork().filter(request => /turn\.start|session\.send$/.test(request.method));
+      expect(turns).toHaveLength(1);
+      expect(JSON.stringify(turns[0]!.params)).toContain(transcript);
+      expect(h.modelCalls()).toHaveLength(0);
+      await sleep(30);
+      expect((await h.history())[0]?.transcript).toBe(transcript);
+    } finally { await h.dispose(); }
+  });
+}
+
+
+test("翻译过滤填充词的提示不推断用户没有说话", async () => {
+  const h = await harness();
+  try {
+    const main = await h.host.openSurface("main");
+    await sleep(100);
+    h.host.setNextVoiceCommandTranscript("呃…嗯…呃…");
+    const { sessionId } = await speak(h, "com.reai.voice.command.translate");
+    await expectNothingSent(h, sessionId);
+    expect(main.root!.querySelector(".inline-error")?.textContent).toBe("未识别到可翻译内容，这次没有发送");
   } finally { await h.dispose(); }
 });

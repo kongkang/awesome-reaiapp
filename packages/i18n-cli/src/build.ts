@@ -22,6 +22,17 @@ export async function buildApp(appDirectory: string, requireI18n = true, sourceR
   if (findings.length > 0) {
     throw new BuildError("Manifest 校验未通过，构建中止", findings);
   }
+  const { entry, skinEntry } = await compileAppArtifacts(root, manifest);
+
+  if (!readFileSync(manifestPath).equals(originalManifest)) throw new BuildError("Manifest changed during build");
+  const finalFindings = [...validateManifest(manifest, sourceReview, root), ...validateLocaleDirectory(root, manifest, requireI18n)];
+  if (finalFindings.length) throw new BuildError("Post-build validation failed", finalFindings);
+  const buildManifest = createBuildManifest(root, manifest, entry, skinEntry);
+  return { appDirectory: root, manifest, buildManifest };
+}
+
+/** Internal byte construction. Callers retain their own validation gates. */
+export async function compileAppArtifacts(root: string, manifest: Record<string, unknown>): Promise<{ entry?: string; skinEntry?: string }> {
   for (const path of [BUILD_MANIFEST_NAME, "dist", "assets", "skin"]) assertSafeTree(root, path);
 
   const isSkin = manifest["packageType"] === "skin";
@@ -62,9 +73,12 @@ export async function buildApp(appDirectory: string, requireI18n = true, sourceR
     await bundle(source, outDir, root);
   }
 
-  if (!readFileSync(manifestPath).equals(originalManifest)) throw new BuildError("Manifest changed during build");
-  const finalFindings = [...validateManifest(manifest, sourceReview, root), ...validateLocaleDirectory(root, manifest, requireI18n)];
-  if (finalFindings.length) throw new BuildError("Post-build validation failed", finalFindings);
+  return { ...(entry ? { entry } : {}), ...(skinEntry ? { skinEntry } : {}) };
+}
+
+/** Internal canonical manifest construction, shared with review-byte calculation. */
+export function createBuildManifest(root: string, manifest: Record<string, unknown>, entry?: string, skinEntry?: string): BuildManifestV1 {
+  const isSkin = manifest["packageType"] === "skin";
   for (const path of [APP_MANIFEST_NAME, "dist", "assets", "skin"]) assertSafeTree(root, path);
   const files = collectPackagedFiles(root);
   const outPrefix = entry ? `${dirname(entry)}/` : "";
@@ -95,7 +109,7 @@ export async function buildApp(appDirectory: string, requireI18n = true, sourceR
     throw new BuildError(`构建产物里没有 Skin 定义 ${skinEntry}`);
   }
 
-  return { appDirectory: root, manifest, buildManifest };
+  return buildManifest;
 }
 
 /**

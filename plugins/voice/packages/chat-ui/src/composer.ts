@@ -31,6 +31,8 @@ export interface ChatComposerOptions {
    * 点了没反应的假门。
    */
   onAttach?(): void;
+  /** Consumers hide the entry when no attachment formats are supported. */
+  hideAttach?: boolean;
   /** `+` 钮 disabled 时的说明（默认「暂不支持添加附件」）。 */
   attachDisabledTitle?: TextSource;
 }
@@ -61,16 +63,21 @@ export function mountChatComposer(
 ): ChatComposer {
   const bar = element("div", "chat-input-bar");
 
-  const attach = element("button", "chat-attach");
-  attach.type = "button";
-  bindAttribute(attach, "aria-label", () => t("chatUi.message4"));
-  attach.append(chatIcon("plus", 16));
-  if (options.onAttach) {
-    bindAttribute(attach, "title", () => t("chatUi.message4"));
-    attach.addEventListener("click", () => options.onAttach?.());
-  } else {
-    attach.disabled = true;
-    bindAttribute(attach, "title", options.attachDisabledTitle ?? (() => t("chatUi.message5")));
+  if (!options.hideAttach) {
+    const attach = element("button", "chat-attach");
+    attach.type = "button";
+    bindAttribute(attach, "aria-label", () => t("chatUi.message4"));
+    attach.append(chatIcon("plus", 16));
+    if (options.onAttach) {
+      // Options are mount-time values; callers remount when disabled state changes.
+      attach.disabled = options.disabled === true;
+      bindAttribute(attach, "title", () => t("chatUi.message4"));
+      attach.addEventListener("click", () => options.onAttach?.());
+    } else {
+      attach.disabled = true;
+      bindAttribute(attach, "title", options.attachDisabledTitle ?? (() => t("chatUi.message5")));
+    }
+    bar.append(attach);
   }
 
   const input = element("input", "chat-input");
@@ -109,7 +116,7 @@ export function mountChatComposer(
   const onMic = () => options.mic.onToggle();
   mic.addEventListener("click", onMic);
 
-  bar.append(attach, input, mic);
+  bar.append(input, mic);
   container.append(bar);
 
   const setDraft = (value: string) => {

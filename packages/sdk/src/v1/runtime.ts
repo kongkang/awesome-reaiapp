@@ -252,6 +252,11 @@ export function runApp(definition: AppDefinition, bridge?: HostBridge): RunningA
       },
     },
     developerPlatform: {
+      workflow: {
+        async request(action, input) {
+          return await wire.request(RequestMethod.DeveloperPlatformWorkflow, { action, input });
+        },
+      },
       async getContext() {
         return await wire.request(RequestMethod.DeveloperPlatformContextGet, {});
       },
@@ -286,6 +291,27 @@ export function runApp(definition: AppDefinition, bridge?: HostBridge): RunningA
         return await wire.request(RequestMethod.DeveloperPlatformClientsGet, {
           teamId: input.teamId,
           managementClientId: input.managementClientId,
+        });
+      },
+      async listTesters(input) {
+        return await wire.request(RequestMethod.DeveloperPlatformTestersList, {
+          teamId: input.teamId,
+          productId: input.productId,
+        });
+      },
+      async addTester(input) {
+        return await wire.request(RequestMethod.DeveloperPlatformTestersAdd, {
+          teamId: input.teamId,
+          productId: input.productId,
+          userId: input.userId,
+          idempotencyKey: input.idempotencyKey,
+        });
+      },
+      async removeTester(input) {
+        return await wire.request(RequestMethod.DeveloperPlatformTestersRemove, {
+          teamId: input.teamId,
+          productId: input.productId,
+          testerUserId: input.testerUserId,
         });
       },
     },
@@ -694,6 +720,13 @@ export function runApp(definition: AppDefinition, bridge?: HostBridge): RunningA
       },
       async waitForTurn(options) { return await waitForAgentTurn(options); },
       async startTurn(options) { return await wire.request(RequestMethod.AgentV2StartTurn, options); },
+      async attachmentAdmission(options) { return await wire.request(RequestMethod.AgentV2AttachmentRead, options); },
+      attachmentUploads: {
+        async start(options) { return await wire.request(RequestMethod.AgentV2AttachmentUploadStart, options); },
+        async chunk(options) { return await wire.request(RequestMethod.AgentV2AttachmentUploadChunk, options); },
+        async finish(options) { return await wire.request(RequestMethod.AgentV2AttachmentUploadFinish, options); },
+        async cancel(options) { return await wire.request(RequestMethod.AgentV2AttachmentUploadCancel, options); },
+      },
       async getTurn(options) { return await wire.request(RequestMethod.AgentV2GetTurn, options); },
       async events(options) { return await wire.request(RequestMethod.AgentV2Events, options); },
       async backends(options) {
@@ -707,7 +740,8 @@ export function runApp(definition: AppDefinition, bridge?: HostBridge): RunningA
       },
       async send(options) {
         if (options.sessionId.startsWith("agent2-")) {
-          const request = { sessionId: options.sessionId, idempotencyKey: options.turnId ?? crypto.randomUUID(), text: options.text, taskPresentation: options.taskPresentation };
+          const request = { sessionId: options.sessionId, idempotencyKey: options.turnId ?? crypto.randomUUID(), text: options.text, taskPresentation: options.taskPresentation,
+            ...(options.attachmentInput ? { attachmentInput: options.attachmentInput } : {}) };
           const turn = await wire.request<AgentTurnSnapshot>(RequestMethod.AgentV2StartTurn, request);
           return await waitForAgentTurn({ sessionId: options.sessionId, turnId: turn.turnId }, turn);
         }
