@@ -265,6 +265,12 @@ HTML `<input type="file">` 返回用户所选文件，Host 不提供任意电脑
 均清理临时文件；插件拿不到临时路径或 OAuth token。旧 Host 返回 `NETWORK_UPLOAD_UNSUPPORTED`，
 需要升级；依赖大文件功能的插件声明 `hostApi.range >=1.24.0 <2.0.0`。
 
+已通过归属校验的 `chunk/finish` 调用失败时，Host 按 `uploadId` 和当前 App、组件、运行实例
+收回其暂存条目。新的
+`http.upload.start` 在取得预约或创建条目前失败，已有同 `requestId` 的请求继续运行。
+另一次 `chunk/finish` 在上传进入发送阶段后失败，原发送继续持有文件和名额，直到发送结束释放。
+显式取消仍执行下述会话与归属校验。
+
 ```ts
 const data = new FormData();
 data.append("file", fileInput.files![0]);
@@ -608,8 +614,10 @@ await ctx.systemTasks.open({
 `account-login`、`voice-command-settings`、`audio-timeline-settings`、`app-permissions`、
 `app-managed-resources`、`agent-config`。后七项分别精确落到设备键位映射、账户登录行、兼容语音命令设置入口、
 官方 Voice 设置、**来源插件自身**的已安装详情权限区或运行组件区，以及「设置 › 插件 Agent 配置」。
-`agent-config`（1.23）已进合同、锁定到来源插件；其设置页落点接线前导航按
-`SYSTEM_TASK_NAVIGATION_BLOCKED` 诚实失败，不降级打开泛化设置页。
+`agent-config`（1.23）锁定到来源插件。Host 的当前可配置清单必须包含来源，页面也必须完成该插件的
+实际锁定，才确认导航成功。已启用快照不能代替可配置资格；清单排除来源、读取失败或锁定超时均按
+`SYSTEM_TASK_NAVIGATION_BLOCKED` 失败，不以打开泛化配置页冒充成功。清单与审批规则保持不变，
+插件不能自行指定其他来源。退出页面或账号生命周期结束后，迟到回执不能确认新任务。
 `audio-timeline-settings` 只为旧调用方保留线协议兼容，
 不再落 Host 全局设置；官方 Voice 缺失或停用时导航失败。`app-permissions` 的 appId 只能由 Host 从 live、当前可见的
 Bridge mount 推导；`app-managed-resources` 遵循同一来源约束，适合插件在 Host 报告受管运行组件
@@ -1356,6 +1364,11 @@ Manifest 只表达“需要什么”，不产生批准。Host 从独立机器 po
 | `terminal.session@1` | Host API 1.15 的托管 Shell 会话；`ctx.terminal.create/list/attach/detach/write/resize/restart/close`。当前批准官方 `com.reai.terminal`，每 App 最多 8 个会话，回放最多 384 KiB；停用、卸载或退出会清理会话及同一 PTY session 的子进程 |
 
 任何本地包都不能因为写进 Manifest 就获得这些能力，Developer Mode 也不例外。
+
+`voice.context@1` 在前台身份无法确认时不读取正文，返回
+`windowTextStatus: "unavailable"`，不附正文或应用粗分类。macOS 不读取本 Host 或由同一
+Host 拉起的同可执行文件身份代理的焦点正文。正常外部应用的焦点控件正文仍按既有权限、
+排除名单、凭据护栏和字节上限采集。共享前台查询、插入/预热与截图合同不变。
 
 `voice.context@1` 会按应用 bundle id / 进程名排除终端与常见密码管理器，并对焦点文字做
 凭据形态拦截；但它刻意不读浏览器 URL 或窗口标题，因此无法识别浏览器标签页里的网页密码库。

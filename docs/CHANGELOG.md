@@ -1,5 +1,15 @@
 # ReAI App 平台规范更新日志
 
+## 2026-10-06 · 更新平台规范与候选能力边界
+
+- [设计规范](plugin-design-system-v1.md#waiting-failure-minimum)区分普通用户提示与开发者诊断；保留设置页底部版本和关于入口要求。
+- [开发规范](plugin-development-v1.md)与[接口参考](plugin-api-reference-v1.md)补充当前插件权限决定、Agent 配置导航锁定、合法版本下界、上传归属清理和前台正文读取限制。
+- [Agent Service v2](agent-service-v2.md)补充技能目录与勾选配对、配置写入复验、字面花括号，以及 Voice 命令附件候选的准入、限额、重试与过期行为。
+- [受控执行](agent-controlled-run.md)澄清搜索截断、账号退休和后代清理边界；[订阅与积分](driver-cloud-billing.md)补充当前/已付下一期、报价等待与凭据收尾。
+- [送审规范](plugin-submission-v1.md)记录可复现压缩与待审字节合同。附件、新 Mock 上传、Deflate 与离线计算尚未随本仓工具链交付，不能据文档宣称已支持。
+- 新增[开放平台工作流](developer-platform-workflow-v1.md)：仅系统插件的 scope、原生上传、收费确认、幂等重试与发布 CAS 恢复合同；本仓 SDK 尚未提供入口。
+- 本轮只同步规范；SDK、CLI、插件代码、权限、批准、签名、上架与网站部署均需独立交付和验证。
+
 ## 2026-10-03 · 独立源码与打包验收
 
 - 公开 15 个插件、4 个示例和共享工具，提供本仓库可执行的冻结安装、测试、编译与打包入口。
