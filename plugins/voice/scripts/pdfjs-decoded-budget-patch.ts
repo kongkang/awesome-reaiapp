@@ -37,7 +37,11 @@ class VoicePdfDecodedBudget {
     if (requested > available) this.fail();
     let capacity = 512;
     while (capacity < requested) capacity *= 2;
-    if (capacity > available) capacity = requested;
+    if (capacity > available) {
+      // Bound repeated copies without reserving all remaining document capacity.
+      const extra = Math.min(64 * 1024, Math.ceil((available - current) / 2));
+      capacity = Math.max(requested, current + extra);
+    }
     this.reserve(key, "buffer", capacity);
     return capacity;
   }

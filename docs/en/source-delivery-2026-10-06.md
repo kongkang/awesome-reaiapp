@@ -15,11 +15,13 @@ The SDK and contract versions remain `1.24.0`. Check the exact source contents b
 
 - Shared packages passed 537 unit tests, type checks, and installation contract checks. Five package tarballs passed installation and API checks outside the repository.
 - The 14 ordinary plugins and 4 examples passed 695 unit tests and their installation, validation, build, type, and contract checks. All 18 repeated package pairs had identical bytes, sizes, and SHA-256 digests.
-- Voice passed 1430 tests and type checks. Its 190 offline resources match the synchronization inputs, with the original third-party licenses retained.
+- Voice passed 1432 tests and type checks. Of its 190 offline resources, 189 match the synchronization inputs. The controlled PDF worker includes the buffer-growth fix made in this repository. Repeated generation produces identical bytes, and the original third-party licenses are retained.
 - Voice validation, build, and pack each returned only the four expected SOURCE capability rejections. No Voice package was produced.
 - The website build and its 8 tests passed.
 
-The unit-test total is 2662. Website tests are counted separately. Repeated Skin contract tests are not counted twice.
+The unit-test total is 2664. Website tests are counted separately. Repeated Skin contract tests are not counted twice.
+
+The PDF fix limits extra buffer capacity near the budget boundary to reduce repeated copies. The 16 MiB cumulative decoded-capacity budget and 20-second Worker deadline remain unchanged. New regression tests check allocation counts, copied bytes, rejection before allocation, and complete bytes in a later stream.
 
 ## Voice candidate and release boundaries
 
