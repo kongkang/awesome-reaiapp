@@ -151,3 +151,30 @@ bun scripts/plugin-submission.ts check plugins/code-worker --package /absolute/o
 证据绑定 appId/publisherId/oauthAppId/version、完整插件输入文件清单与哈希、独立报告哈希及 `SOURCE_REVIEW_SCOPE`、期望最终包 SHA。输入/报告/身份/最终包变化必须重新审查。构建、两次打包与归档复验全程核同一证据，只消除已审范围的能力拒绝，Schema/未知能力/资源/Host API 等错误保留。
 
 正规例：`bun scripts/plugin-submission.ts pack plugins/voice --out <path>.reaiapp --form-version <version> --source-review <evidence.json>`。成功 `.submission.json` 标明本地证据摘要、runtimeGrant:false、platformApproval:false。上传须使用真实CASfileId、当前报价、冻结包，审核后的批准必须绑定精确摘要；不能据源码记录启动未批准候选。
+
+
+## 8. 可复现压缩与待审字节（工具链候选）
+
+2026-10-06 文档更新：以下为新的提交工具合同。本仓库当前 `scripts/plugin-submission.ts`
+尚未支持 `--compression`，也没有 `scripts/source-review-bytes.ts`；不能在现有工具上执行
+这些候选入口，或把文档当作工具链已更新。既有 STORE 路径与校验继续适用。
+
+支持该合同的 modern 工具链默认仍使用 STORE。显式 `--compression deflate` 仅用于 pack，
+check 自动识别格式。压缩固定 `fflate 0.8.3`、`{ level: 9, mem: 8 }`、条目顺序、时间与
+普通文件属性；不节省字节或超过压缩比限额的资源保留 STORE。必须重复构建并逐字节一致，
+验包仍核路径、local/central 目录、CRC、尺寸、资源 SHA、白名单及完整归档摘要。
+冻结 CLI 不新增该选项。64 MiB 包上限与团队实际存储配额分别执行。
+
+改变压缩策略会改变包 SHA-256，必须重新计算候选、取得绑定完整来源输入与最终摘要的
+独立 SOURCE 审查，再走正常双打包。旧 STORE 证据不能批准新 Deflate 归档，不能手工重压
+后复用旧批准；SOURCE 证据也不替代平台签名、Host 安装或业务验收。
+
+首次审查前的独立离线计算只生成待审字节及计算回执：绑定全部源码输入、实际工具链、
+实际解析的编码器入口与完整文件摘要，计算前后核验；缺项、漂移、版本或 schema/资源/
+语言错误应失败。输出目录位于插件之外且尚不存在，两次计算顺序执行，不与构建测试并发。
+默认 STORE 不依赖 Deflate 编码器；显式 Deflate 必须核验相同的固定编码器字节。
+
+材料始终标记 `NOT_VALIDATED`、`NOT_APPROVED`、`NOT_INSTALLABLE`、`NOT_PUBLISHED`，
+`runtimeGrant:false`、`platformApproval:false`。它不生成源码批准、提交回执或运行授权。
+独立审查后再用正常 CLI 两次打包核对摘要与完整字节；任何输入、工具链、依赖或压缩策略
+变化都要重新计算和审查。文档同步本身不启动审查、上传或发布。
