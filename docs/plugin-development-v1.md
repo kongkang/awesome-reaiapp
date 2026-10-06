@@ -485,8 +485,8 @@ Host 把按钮的可访问名改为“返回插件首页”。
 2. 超过 1 秒在按钮下方显示真实进度；Bridge 调用本身不回报字节时，显示当前阶段名 + 已用时间 +
    不确定进度条，不编百分比；
 3. 处理函数入口用进行中标志挡住重复触发；
-4. 完成要有完成态，失败按 [§6.0](plugin-design-system-v1.md#waiting-failure-minimum) 给真实原因、
-   错误码、插件与 Host 版本、可复制诊断和「重试」。
+4. 完成要有完成态，失败按 [§6.0](plugin-design-system-v1.md#waiting-failure-minimum) 给真实原因
+   和「重试」；错误码、插件与 Host 版本、可复制诊断仅在用户明确开启 Host 开发者模式时显示。
 
 交给 Host 去做的事（例如 `ctx.systemTasks` 发起的系统任务、Host 弹出的确认框）由 Host 显示它那一段
 的进度；插件自己的按钮在把请求交出去之前，仍要先按第 1 条变样。
@@ -497,6 +497,8 @@ Host 把按钮的可访问名改为“返回插件首页”。
 `http.fetch@1`。权限决定按
 `appId` 和声明摘要隔离；一个插件获准不能替另一个插件获准，插件权限也不等于对应的 macOS
 系统权限。
+
+插件详情中的用户决定只作用于当前显示的插件。
 
 ### 4.1 读取账户状态
 
@@ -888,12 +890,19 @@ Service/headless App 也不必占侧边栏，统一在“更多/已安装 App”
 - 声明 `agentFeatures` 必须同时声明 `agent.session@2`（含同名用户权限）——配置只对 v2 会话生效；
   且 `hostApi.range` 下界必须 ≥ `1.23.0`：旧 Host 的 `deny_unknown_fields` 会因未知字段整包拒装，
   声明了却装不上等于给用户一个假入口；
+- 新 Host/CLI 合同按完整三段稳定版本的精确值（含裸版本）、`^`、`~`、`>`、`>=`
+  计算下界；多个条件取最高下界，`<` / `<=` 不提供下界。缺位、通配、预发布和 OR
+  语法仍不接受。**本仓当前 CLI 尚未包含精确值/caret/tilde 的这项修复**：声明
+  `agentFeatures` 时仍应使用 `>=1.23.0 <2.0.0` 这类带显式比较器下界的范围，
+  并验证所需最低版本及当前 Host 兼容；本次文档更新不改变 validator。
 - `id` 匹配 `^[a-z][a-z0-9-]*$`、≤64 字节（与 `featureRef` 的引用域一致）且在插件内唯一、
   发布后不复用；`name`（≤48 字符）是给用户看的中文说明；
 - `promptTemplate` 是**参数化模板**（方案 B）：`{slot}` 槽位必须逐个在 `promptParams` 登记
   （参数名匹配 `^[A-Za-z][A-Za-z0-9_]*$`，否则槽位永远无法引用它），未登记或语法不完整的槽位在
   校验阶段被拒；长度按 UTF-8 字节计（≤16384 字节，中日韩文本比等长英文更早触限）。用户以后在配置页覆盖的是**模板文本**，动态参数（目标语言、
-  档位指令等）仍由插件在创建会话时注入——覆盖不会丢掉动态行为。当前版本不支持字面大括号；
+  档位指令等）仍由插件在创建会话时注入——覆盖不会丢掉动态行为。当前插件 Manifest 声明模板
+  不支持字面大括号；用户覆盖模板采用 [Agent Service v2 的片段规则](agent-service-v2.md)，
+  保留闭合的非槽位文本，不递归插值。两类模板的校验边界分别核对；
 - `runtime` 出现即表示该功能锁定引擎（如总结固定 DSH），配置页如实呈现为只读；缺省 = 跟随
   全局默认，可被插件级配置覆盖；
 - `toolBase` 是用户可勾选的**基集上限**：用户只能在插件声明的集合内调整工具，勾选也不等于
@@ -920,7 +929,9 @@ const created = await ctx.agent.createSession({
 
 「设置 › 插件 Agent 配置」的系统任务 target `agent-config` 已进入 `system.tasks@1` 白名单
 （SDK 与 Host 枚举同步）并**已接线**：来源 appId 只取可信 Bridge mount（无可信来源或来源
-插件停用即失败，不降级打开泛化设置页）；页面进入锁定模式（锁定标签、不可切换插件），
+插件停用即失败，不降级打开泛化设置页）；前端先读取 Host 的当前可配置清单，页面重新读取清单并
+完成来源锁定后才确认导航成功。旧的已启用快照或页面缓存不代替现有审批与签名复验；清单排除来源、
+读取失败或锁定超时按 `SYSTEM_TASK_NAVIGATION_BLOCKED` 失败。页面进入锁定模式（锁定标签、不可切换插件），
 返回上下文走既有 `system-task.return`。带 `featureRef` 的会话还可附加用户配置的**只读
 技能目录**产出：用户为插件选择一个本地 Markdown 目录（Host 设置页自己的选择器），
 功能级勾选的文档在创建时展开为 inline `SkillDocument`（符号链接拒绝、预算 fail-closed、
@@ -976,6 +987,28 @@ bun packages/cli/src/cli.ts pack          <appDir> --out <appDir>/my-app-1.0.0.r
 `notificationRequests` 记录通知请求而不发送真实系统通知；它会执行与生产 Host 相同的字段、
 类型、长度和控制字符校验。
 用户授权、拒绝和持久化是 Host 责任，必须在真实 Driver V2 中做最后验证。
+
+**工具链版本边界（2026-10-06）**：以下是新 test-kit 的合同说明。本仓库当前 test-kit 尚未包含
+`networkHandler`、`networkUploadNow` 或分块上传模拟；需独立同步、验证工具链后才能使用，
+仅 SDK 的 `1.24.0` 版本号不能证明测试工具具备这些能力。
+
+SDK 1.24 的 `brokerFetch` 正文超过512KiB时，新 Mock Host 支持 `http.upload.start/chunk/finish/cancel`。
+它检查 Manifest 的 `http.fetch@1` 和 endpoint，按公开支持矩阵限制正文52MiB、分块256KiB、每实例
+一个上传，并检查精确 offset 和总长度。`networkResponse` 仍可提供固定响应；显式 `networkHandler`
+可接收 `{ request, body, signal }`，其中 `body` 是完整 Blob，供合成 fixture 验证 multipart 或 SHA。
+回调必须返回确定性响应，不得请求真实网络。
+`signal` 的取消模拟只适用于分块上传；inline 回调不建立在途条目，也不模拟请求取消。
+test-kit 发布的是 TypeScript 源码。单独运行消费者类型检查时，应使用 ESNext / NodeNext / Preserve
+模块模式、`resolveJsonModule: true`，并提供 Bun 或 Node 类型；合同测试仍使用 Bun。
+
+暂存使用一个有界 buffer；finish 构造 Blob 时瞬时内存约为两倍正文，随后释放 buffer 引用。
+上传的 `networkRequests` 只记录一次元数据、bodyBytes 和 uploadId，不保留分块、Blob 或大正文 base64。
+回调自行保留的 Blob 由 fixture 管理。取消只匹配 requestId；未命中、已完成或重复取消返回
+`cancelled: false`。失败、取消和 disable 清理本实例条目；迟到回调不能删除后来新建的上传。
+
+`networkUploadNow` 可注入合成时钟；start/chunk/finish 惰性检查180秒 idle 和15分钟 absolute 期限。
+这不是原生后台计时、真实 HTTP 超时、用户同意、全账号四个名额或跨 runtime 生命周期的模拟。
+其他 Mock 功能仍按各自合同验证；这项上传测试不能代替签名 App 和真实 OAuth 验收。
 
 ## 6. 安装与权限验收
 

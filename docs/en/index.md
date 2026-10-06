@@ -20,6 +20,7 @@ Build useful tools with independent ReAI plugins. This site is public: browsing 
 - [Metadata i18n compatibility](/en/plugin-i18n-metadata-v2)
 - [Settings, exact versions, and About links](/en/plugin-settings-and-release-notes-v1)
 - [Specification changelog](/en/changelog)
+- [Developer platform workflow candidate](/en/developer-platform-workflow-v1) (system plugin only; current SDK does not provide it)
 
 ## Delivery boundaries
 
