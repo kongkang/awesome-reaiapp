@@ -17,6 +17,14 @@ description: English reading guide to the ReAI agent service v2 specification.
 
 - Refer to the source for the precise v2 fields, compatibility boundaries, and implementation status.
 
+## Voice attachment candidate
+
+- Text attachments accept strictly decoded UTF-8 and UTF-16 with a BOM. The original text-file limit remains 64 KiB; decoding failures are rejected.
+
+- Incompatible PDF Worker caches or handshake errors return `VOICE_ATTACHMENT_DOCUMENT_UNAVAILABLE`. Cancellation returns `AbortError`; an unresponsive handshake uses the existing 20-second document deadline and returns `VOICE_ATTACHMENT_DOCUMENT_TIMEOUT`.
+
+- These details describe the existing Voice source candidate. Platform approval, signing, and real Host verification remain separate.
+
 ## Continue reading
 
 - [Complete Chinese specification](/agent-service-v2)

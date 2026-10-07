@@ -174,6 +174,9 @@ check 自动识别格式。压缩固定 `fflate 0.8.3`、`{ level: 9, mem: 8 }`�
 语言错误应失败。输出目录位于插件之外且尚不存在，两次计算顺序执行，不与构建测试并发。
 默认 STORE 不依赖 Deflate 编码器；显式 Deflate 必须核验相同的固定编码器字节。
 
+该入口仅支持普通 App，不支持 Skin。输出为 `candidate.review-bytes` 与 `calculation.json`；
+回执记录压缩策略、完整输入与工具链摘要、归档摘要与大小、资源清单，以及仍待审的能力拒绝。
+
 材料始终标记 `NOT_VALIDATED`、`NOT_APPROVED`、`NOT_INSTALLABLE`、`NOT_PUBLISHED`，
 `runtimeGrant:false`、`platformApproval:false`。它不生成源码批准、提交回执或运行授权。
 独立审查后再用正常 CLI 两次打包核对摘要与完整字节；任何输入、工具链、依赖或压缩策略
