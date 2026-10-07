@@ -264,12 +264,16 @@ app-private + yolo 开放，与 `run` 一样需要 `local.terminal.exec@1`；这
   当前 `opaqueBinding`、`revision` 及准确且不重复的 `modes`。账号、网关、插件配置、实际模型、
   运行时或授权变化使旧快照和附件失效。
 - 文本项为 `{kind: "text", mode: "text" | "pdf-text" | "spreadsheet-text", name, mimeType, text}`。
-  每回合最多四项，文本合计 64 KiB / 24,000 字符，且须满足最终请求限额。文本文件限 64 KiB；
+  每回合最多四项，文本合计 64 KiB / 24,000 字符，且须满足最终请求限额。文本文件限 64 KiB，
+  支持 TXT / HTML 及其他可严格解码的 UTF-8、带 BOM 的 UTF-16 文本；解码失败明确拒绝。
   PDF / XLSX / XLS 原文件限 5 MiB。HTML 不执行脚本，表格不执行宏或公式；扫描、加密、
   无文本或超限文档明确失败，不静默截断。原生 PDF 输入未开放。
 - PDF 保留 100 页、20 秒独立 Worker 限制，并增加每份 16 MiB 累计解码分配预算；翻页不退还，
   过滤器链、拼接与容量余量分别计费。无法提前预算的解码路径明确拒绝，超限整份失败，
   不返回部分文本。该预算不承诺整个解析过程的 RSS 上限。
+  不兼容的 Worker 缓存或握手错误返回 `VOICE_ATTACHMENT_DOCUMENT_UNAVAILABLE`；
+  握手取消返回 `AbortError`。无响应沿用整份文档原有的 20 秒时限，返回
+  `VOICE_ATTACHMENT_DOCUMENT_TIMEOUT`，不另起握手时限。
 - 表格行列限 1000 × 256；hyperlink 单范围访问面积限 10000，补建前校验 unique cell 预算
   10000。负坐标无效，超限整份失败；重复/重叠链接不重复计数，不以静默截断换取成功。
   全文件 Worker 时限不等于内存上限，也不保证覆盖所有解析结构的分配。

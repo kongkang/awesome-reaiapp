@@ -17,6 +17,8 @@ description: English reading guide to the ReAI packaging and submission specific
 
 - Source review, signing, platform approval, public release, and Host installation are separate states. Never reuse an old approval for changed bytes or bypass a rejection.
 
+- Offline review-byte calculation supports ordinary Apps only, not Skins. It writes `candidate.review-bytes` and `calculation.json`; the receipt records compression, complete input and toolchain digests, archive digest and size, resources, and pending capability findings. These files do not grant approval or installation rights.
+
 ## Continue reading
 
 - [Complete Chinese specification](/plugin-submission-v1)

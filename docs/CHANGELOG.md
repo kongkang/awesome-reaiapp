@@ -1,5 +1,11 @@
 # ReAI App 平台规范更新日志
 
+## 2026-10-07 · 对齐附件与离线待审工具说明
+
+- [Agent Service v2](agent-service-v2.md)补齐文本附件的严格 UTF-8 / 带 BOM UTF-16 解码规则，以及 PDF Worker 缓存、握手错误、取消与原有 20 秒文档时限的对应行为。
+- [送审规范](plugin-submission-v1.md)明确离线待审字节计算仅支持普通 App，并说明 `candidate.review-bytes`、`calculation.json` 及回执内容。
+- 英文阅读指南同步上述说明。条款对应既有源码实现；插件版本、能力和发布状态没有变化。
+
 ## 2026-10-06 · 同步插件与共享工具增量
 
 - SDK 同步受控附件输入与系统插件开放平台工作流类型、调用校验及合同 Schema；平台批准和真实 Host 支持单独验收。
