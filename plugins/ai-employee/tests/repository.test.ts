@@ -55,4 +55,16 @@ describe("CAS publication and physical storage budget", () => {
     await expect(new EmployeeRepository(store).initialize()).rejects.toThrow();
     expect(store.values.get(INDEX_KEY)).toEqual({ formatVersion: 99 });
   });
+  test("optional pages preserve legacy CAS shape and make retained pages reachable", async () => {
+    const store = new MemoryStore(); const repo = new EmployeeRepository(store); await repo.initialize();
+    expect((await repo.loadIndex()).pages).toBeUndefined();
+    await repo.commit(index => ({ index: { ...index, pages: ["page/example"] }, objects: [{ key: "page/example", value: { definition: { id: "example" } } }] }));
+    expect((await repo.loadIndex()).pages).toEqual(["page/example"]);
+    expect((await repo.storageStats()).orphanCount).toBe(0);
+  });
+  test("the global page limit rejects before immutable writes", async () => {
+    const store = new MemoryStore(); const repo = new EmployeeRepository(store); await repo.initialize();
+    await expect(repo.commit(index => ({ index: { ...index, pages: Array.from({ length: 101 }, (_, i) => `page/${i}`) }, objects: [{ key: "page/excess", value: "never saved" }] }))).rejects.toThrow();
+    expect(store.values.has("page/excess")).toBe(false);
+  });
 });

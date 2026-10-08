@@ -1,9 +1,15 @@
-import { validateScopedCss } from "./template";
-export const LIMITS = Object.freeze({ sourceBytes: 128 * 1024, valueBytes: 256 * 1024, storageBytes: 24 * 1024 * 1024, sources: 200, records: 1000, reports: 100, profileBytes: 64 * 1024, skills: 8, skillCharacters: 32768 });
+import { validatePageMarkup, validateScopedCss } from "./template";
+export const LIMITS = Object.freeze({ sourceBytes: 128 * 1024, valueBytes: 256 * 1024, storageBytes: 24 * 1024 * 1024, sources: 200, records: 1000, reports: 100, profileBytes: 64 * 1024, skills: 8, skillCharacters: 32768, pageBytes: 32 * 1024, pageBindings: 16, bindingFilters: 8, profilePages: 12, customPagesPerProfile: 20, customPages: 100 });
 export const MAX_MONEY_CENTS = Math.floor(Number.MAX_SAFE_INTEGER / LIMITS.records);
 export type RecordValue = string | number | boolean | null;
 export interface EmployeeField { key: string; label: string; type: "text" | "number" | "money" | "date" | "select" | "boolean"; required: boolean; aliases: string[]; options?: string[] }
-export interface EmployeeProfile { schemaVersion: 1; id: string; name: string; jobTitle: string; description: string; fields: EmployeeField[]; agent: { prompt: string; skills: { id: string; title: string; content: string }[]; sop: string; tools: string[] }; ui: { accentColor: string; logoText: string; css: string; html: string } }
+export interface EmployeePageFilter { field: string; operator: "eq" | "contains" | "empty" | "gte" | "lte"; value?: RecordValue }
+export interface EmployeePageBinding { id: string; kind: "count" | "sum" | "distinct" | "difference" | "records" | "reports"; field?: string; columns?: string[]; filters?: EmployeePageFilter[]; left?: string; right?: string }
+export interface EmployeeHtmlPage { id: string; title: string; html: string; css: string; bindings: EmployeePageBinding[] }
+export interface EmployeePageProposal { proposalId: string; profileId: string; profileVersion: string; definition: EmployeeHtmlPage }
+export interface EmployeeSavedPage extends EmployeePageProposal { createdAt: string }
+export type SavedPage = EmployeeSavedPage;
+export interface EmployeeProfile { schemaVersion: 1; id: string; name: string; jobTitle: string; description: string; fields: EmployeeField[]; agent: { prompt: string; skills: { id: string; title: string; content: string }[]; sop: string; tools: string[] }; ui: { accentColor: string; logoText: string; css: string; html: string; dashboard?: EmployeeHtmlPage; pages?: EmployeeHtmlPage[] } }
 export interface CompanySettings { name: string; jurisdiction: string; currency: string; goals: string; policies: string; reportingPeriod: string }
 export interface SourceSummary { id: string; name: string; mimeType: string; byteLength: number; sha256: string; importedAt: string; status: "pending" | "processed" }
 export interface RawSource extends SourceSummary { text: string; bytesBase64: string }
@@ -12,7 +18,7 @@ export interface EmployeeReport { id: string; title: string; body: string; text:
 export interface AuditEvent { id: string; action: string; entityId: string; revision: number; at: string; detail: string }
 export interface CleaningIssue { row: number; field: string; message: string }
 export interface StorageStats { usedBytes: number; budgetBytes: number; orphanCount: number; orphanBytes: number }
-export interface EmployeeSnapshot { revision: number; profile: EmployeeProfile; availableProfiles: { id: string; name: string }[]; company: CompanySettings; sources: SourceSummary[]; records: EmployeeRecord[]; reports: EmployeeReport[]; audit: AuditEvent[]; passwordConfigured: boolean; developerUnlocked: boolean; storage: StorageStats }
+export interface EmployeeSnapshot { revision: number; profile: EmployeeProfile; profileVersion: string; dashboard: EmployeeHtmlPage; pages: EmployeeHtmlPage[]; availableProfiles: { id: string; name: string }[]; company: CompanySettings; sources: SourceSummary[]; records: EmployeeRecord[]; reports: EmployeeReport[]; audit: AuditEvent[]; passwordConfigured: boolean; developerUnlocked: boolean; storage: StorageStats }
 export class EmployeeError extends Error { constructor(public readonly code: string, message: string) { super(message); this.name = "EmployeeError"; } }
 export function reject(code: string, message: string): never { throw new EmployeeError(code, message); }
 export const jsonBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
@@ -56,14 +62,90 @@ export function validateProfile(input: unknown): EmployeeProfile {
   if (!Array.isArray(agent.tools) || agent.tools.length > 32 || new Set(agent.tools).size !== agent.tools.length) reject("INVALID_PROFILE", "工具集合无效");
   agent.tools.forEach(tool => { if (!/^[a-z][a-z0-9_.-]{0,63}$/.test(string(tool, 64, "工具引用"))) reject("INVALID_PROFILE", "工具引用格式无效"); });
   if (agent.tools.length) reject("TOOLS_NOT_APPROVED", "此Demo只读，工具扩展需平台批准");
-  const ui = object(value.ui, ["accentColor", "logoText", "css", "html"], "界面配置");
+  const ui = object(value.ui, ["accentColor", "logoText", "css", "html", "dashboard", "pages"], "界面配置");
   if (!/^#[a-f0-9]{6}$/i.test(string(ui.accentColor, 7, "主题颜色"))) reject("INVALID_PROFILE", "主题颜色须为六位HEX颜色");
   string(ui.logoText, 12, "Logo文字"); const css = string(ui.css, 8192, "CSS", true); const html = string(ui.html, 16384, "HTML", true);
   if (/url\s*\(|@import|expression\s*\(|javascript:|<|>|\\/i.test(css)) reject("UNSAFE_PRESENTATION", "CSS不能包含外部资源或可执行内容");
   validateScopedCss(css);
   if (/<\s*\/?\s*(script|iframe|object|embed|link|meta|form|input|button|select|textarea|video|audio|svg|img|style|base)\b|\bon[a-z]+\s*=|\b(src|href|srcdoc|action|style)\s*=|javascript:|data:|https?:|\\/i.test(html)) reject("UNSAFE_PRESENTATION", "HTML模板只能包含静态展示元素");
+  const profile = value as unknown as EmployeeProfile;
+  if (ui.dashboard !== undefined) validateHtmlPage(ui.dashboard, profile, { dashboard: true });
+  if (ui.pages !== undefined) {
+    if (!Array.isArray(ui.pages) || ui.pages.length > LIMITS.profilePages) reject("INVALID_PAGE", "岗位默认页面最多12个");
+    const ids = new Set<string>(); const titles = new Set<string>([ui.dashboard ? String((ui.dashboard as EmployeeHtmlPage).title).trim() : "Dashboard"]);
+    for (const inputPage of ui.pages) { const page = validateHtmlPage(inputPage, profile); if (ids.has(page.id) || titles.has(page.title.trim())) reject("PAGE_COLLISION", "岗位默认页面ID或名称重复"); ids.add(page.id); titles.add(page.title.trim()); }
+  }
   if (jsonBytes(value) > LIMITS.profileBytes || jsonBytes(agent) > LIMITS.profileBytes) reject("PROFILE_TOO_LARGE", "岗位配置总量超出64 KiB");
   return clone(value as unknown as EmployeeProfile);
+}
+export const PAGE_GLOBALS = Object.freeze(["company", "role", "jobTitle", "recordCount", "sourceCount", "reportCount", "updatedAt"]);
+const RESERVED_PAGE_IDS = new Set(["dashboard", "overview", "settings", "sources", "records", "reports"]);
+const DASHBOARD_TITLES = new Set(["dashboard", "总体看板", "总览"]);
+const RESERVED_PAGE_TITLES = new Set([...DASHBOARD_TITLES, "设置", "上传资料", "资料上传"]);
+function pageField(input: unknown, profile: EmployeeProfile): EmployeeField { const key = string(input, 32, "页面字段"); const field = profile.fields.find(field => field.key === key); if (!field) reject("INVALID_PAGE_FIELD", "页面引用了岗位未声明的字段"); return field; }
+function filterValue(value: unknown, field: EmployeeField): void {
+  if (value === null) return;
+  const expected = field.type === "boolean" ? "boolean" : ["number", "money"].includes(field.type) ? "number" : "string";
+  if (typeof value !== expected || value === "") reject("INVALID_PAGE_FILTER", "筛选值必须符合岗位字段类型");
+  normalizeValue(value, { ...field, required: false }, false);
+}
+export function validateHtmlPage(input: unknown, profile: EmployeeProfile, options: { dashboard?: boolean } = {}): EmployeeHtmlPage {
+  const page = object(input, ["id", "title", "html", "css", "bindings"], "HTML页面");
+  const id = string(page.id, 64, "页面ID"); if (!/^[a-z][a-z0-9-]{0,63}$/.test(id) || (RESERVED_PAGE_IDS.has(id) && !(options.dashboard && id === "dashboard"))) reject("INVALID_PAGE_ID", "页面ID无效或与固定入口冲突");
+  if (options.dashboard && id !== "dashboard") reject("INVALID_PAGE_ID", "Dashboard定义的ID必须为dashboard");
+  const title = string(page.title, 80, "页面名称").trim().toLowerCase(); if (RESERVED_PAGE_TITLES.has(title) && !(options.dashboard && DASHBOARD_TITLES.has(title))) reject("PAGE_COLLISION", "页面名称与固定入口冲突");
+  const html = string(page.html, 16384, "页面HTML", true); const css = string(page.css, 8192, "页面CSS", true);
+  if (new TextEncoder().encode(html).length > 16384 || new TextEncoder().encode(css).length > 8192 || jsonBytes(page) > LIMITS.pageBytes) reject("PAGE_TOO_LARGE", "页面须满足HTML 16 KiB、CSS 8 KiB、总量32 KiB限制");
+  validateScopedCss(css);
+  if (!Array.isArray(page.bindings) || page.bindings.length > LIMITS.pageBindings) reject("INVALID_PAGE_BINDING", "每页最多16个数据绑定");
+  const ids = new Set<string>(); const scalars: string[] = []; const lists: string[] = []; const bindings: EmployeePageBinding[] = [];
+  for (const inputBinding of page.bindings) {
+    const binding = object(inputBinding, ["id", "kind", "field", "columns", "filters", "left", "right"], "页面绑定");
+    const bindingId = string(binding.id, 64, "绑定ID"); if (!/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(bindingId) || ids.has(bindingId) || PAGE_GLOBALS.includes(bindingId)) reject("INVALID_PAGE_BINDING", "绑定ID无效、重复或覆盖通用变量"); ids.add(bindingId);
+    const kind = string(binding.kind, 16, "绑定类型"); if (!["count", "sum", "distinct", "difference", "records", "reports"].includes(kind)) reject("INVALID_PAGE_BINDING", "绑定类型无效");
+    if (kind === "difference") {
+      if (binding.field !== undefined || binding.columns !== undefined || binding.filters !== undefined) reject("INVALID_PAGE_BINDING", "差额绑定只能引用两个基础指标");
+      string(binding.left, 64, "左指标"); string(binding.right, 64, "右指标");
+    } else {
+      if (binding.left !== undefined || binding.right !== undefined) reject("INVALID_PAGE_BINDING", "只有差额绑定可以引用左右指标");
+      if (["sum", "distinct"].includes(kind)) { const field = pageField(binding.field, profile); if (kind === "sum" && !["number", "money"].includes(field.type)) reject("INVALID_PAGE_BINDING", "求和只支持数值或金额字段"); }
+      else if (binding.field !== undefined) reject("INVALID_PAGE_BINDING", "此绑定不接受field");
+      if (binding.columns !== undefined) {
+        if (kind !== "records" || !Array.isArray(binding.columns) || !binding.columns.length || binding.columns.length > profile.fields.length || new Set(binding.columns).size !== binding.columns.length) reject("INVALID_PAGE_BINDING", "列表列须为不重复的岗位字段");
+        binding.columns.forEach(column => pageField(column, profile));
+      }
+      if (binding.filters !== undefined) {
+        if (kind === "reports" || !Array.isArray(binding.filters) || binding.filters.length > LIMITS.bindingFilters) reject("INVALID_PAGE_FILTER", "每个记录绑定最多8个筛选，报告绑定不能筛选");
+        for (const inputFilter of binding.filters) {
+          const filter = object(inputFilter, ["field", "operator", "value"], "页面筛选"); const field = pageField(filter.field, profile);
+          if (!["eq", "contains", "empty", "gte", "lte"].includes(String(filter.operator))) reject("INVALID_PAGE_FILTER", "筛选操作无效");
+          if (filter.operator === "empty") { if (filter.value !== undefined) reject("INVALID_PAGE_FILTER", "空值筛选不能设置value"); }
+          else if (filter.operator === "contains") { if (!["text", "select", "date"].includes(field.type)) reject("INVALID_PAGE_FILTER", "包含筛选只支持文本字段"); string(filter.value, 2000, "包含筛选值"); }
+          else { if (["gte", "lte"].includes(String(filter.operator)) && (!["number", "money", "date"].includes(field.type) || filter.value === null)) reject("INVALID_PAGE_FILTER", "范围筛选只支持数值、金额或日期"); filterValue(filter.value, field); }
+        }
+      }
+    }
+    if (["records", "reports"].includes(kind)) lists.push(bindingId); else scalars.push(bindingId);
+    bindings.push(binding as unknown as EmployeePageBinding);
+  }
+  for (const binding of bindings) if (binding.kind === "difference") {
+    for (const reference of [binding.left, binding.right]) if (!bindings.some(candidate => candidate.id === reference && ["count", "sum", "distinct"].includes(candidate.kind))) reject("INVALID_PAGE_BINDING", "差额只能引用本页已声明的基础指标，不能形成循环");
+    const moneyUnit = (id: string | undefined) => { const base = bindings.find(candidate => candidate.id === id)!; return base.kind === "sum" && profile.fields.find(field => field.key === base.field)?.type === "money"; };
+    if (moneyUnit(binding.left) !== moneyUnit(binding.right)) reject("INVALID_PAGE_BINDING", "差额绑定的两个基础指标必须使用相同单位");
+  }
+  validatePageMarkup(html, { scalarIds: [...PAGE_GLOBALS, ...scalars], listIds: lists });
+  return clone(page as unknown as EmployeeHtmlPage);
+}
+export function validatePageProposal(input: unknown): EmployeePageProposal {
+  const proposal = object(input, ["proposalId", "profileId", "profileVersion", "definition"], "页面提案");
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$/.test(string(proposal.proposalId, 96, "提案ID")) || String(proposal.proposalId).includes("..")) reject("INVALID_PAGE_PROPOSAL", "提案ID无效");
+  const profileId = string(proposal.profileId, 64, "提案岗位"); if (!/^[a-z][a-z0-9-]{0,63}$/.test(profileId)) reject("INVALID_PAGE_PROPOSAL", "提案岗位无效");
+  const profileVersion = string(proposal.profileVersion, 200, "提案配置版本"); if (!profileVersion.startsWith(`profile/${profileId}/`) || !/^[a-zA-Z0-9/._-]+$/.test(profileVersion) || profileVersion.includes("..")) reject("INVALID_PAGE_PROPOSAL", "提案配置版本无效");
+  object(proposal.definition, ["id", "title", "html", "css", "bindings"], "提案页面");
+  return clone(proposal as unknown as EmployeePageProposal);
+}
+export function createPageProposal(definition: EmployeeHtmlPage, snapshot: EmployeeSnapshot, proposalId: string = crypto.randomUUID()): EmployeePageProposal {
+  return validatePageProposal({ proposalId, profileId: snapshot.profile.id, profileVersion: snapshot.profileVersion, definition: validateHtmlPage(definition, snapshot.profile) });
 }
 export function validateCompany(input: unknown): CompanySettings {
   const value = object(input, ["name", "jurisdiction", "currency", "goals", "policies", "reportingPeriod"], "公司配置");

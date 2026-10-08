@@ -1,6 +1,6 @@
 {
   "name": "reai-ai-employee-demo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "reaiApp": {
@@ -13,7 +13,7 @@
     "build": "bun scripts/sync-release-notes.ts && reai-app build .",
     "validate": "reai-app validate .",
     "test:contract": "reai-app contract-test . --host-api 1.24",
-    "pack": "bun scripts/sync-release-notes.ts && reai-app pack . --out ai-employee-0.1.0.reaiapp",
+    "pack": "bun scripts/sync-release-notes.ts && reai-app pack . --out ai-employee-0.2.0.reaiapp",
     "scaffold": "bun scripts/scaffold.ts",
     "prepare:agent": "bun scripts/prepare-agent.ts",
     "sync:notes": "bun scripts/sync-release-notes.ts"

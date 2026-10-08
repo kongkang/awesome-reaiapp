@@ -1,6 +1,6 @@
-import { cleanSource, clone, createRawSource, jsonBytes, LIMITS, reject, validateCompany, validateProfile, validateRecordValues, type AuditEvent, type CompanySettings, type EmployeeProfile, type EmployeeRecord, type EmployeeReport, type EmployeeSnapshot, type RawSource, type RecordValue, type SourceSummary } from "./domain";
+import { cleanSource, clone, createRawSource, jsonBytes, LIMITS, reject, validateCompany, validateHtmlPage, validatePageProposal, validateProfile, validateRecordValues, type AuditEvent, type CompanySettings, type EmployeePageProposal, type EmployeeSavedPage, type EmployeeProfile, type EmployeeRecord, type EmployeeReport, type EmployeeSnapshot, type RawSource, type RecordValue, type SourceSummary } from "./domain";
 import { EmployeeRepository, type ImmutableObject, type RepositoryIndex } from "./repository";
-import { DEFAULT_COMPANY, DEFAULT_PROFILE, FINANCE_PROFILE, HR_PROFILE } from "./profiles";
+import { DEFAULT_COMPANY, DEFAULT_PROFILE, FINANCE_PROFILE, getDefaultPages, HR_PROFILE } from "./profiles";
 import { validateScopedCss } from "./template";
 interface ProfileVersion { profile: EmployeeProfile; previousKey?: string }
 interface CompanyVersion { company: CompanySettings; previousKey?: string }
@@ -42,6 +42,17 @@ export class EmployeeController {
   snapshot(): EmployeeSnapshot { if (!this.state) reject("NOT_READY", "工作台尚未初始化"); return clone(this.state); }
   subscribe(listener: (state: EmployeeSnapshot) => void): () => void { this.listeners.add(listener); if (this.state) listener(this.snapshot()); return () => this.listeners.delete(listener); }
   private emit() { for (const listener of this.listeners) { try { listener(this.snapshot()); } catch { /* A view error must not change persisted data. */ } } }
+  private async savedPages(): Promise<EmployeeSavedPage[]> {
+    const pages: EmployeeSavedPage[] = [];
+    for (const key of this.index.pages ?? []) {
+      const saved = await this.repository.readObject<EmployeeSavedPage>(key);
+      if (!saved || typeof saved !== "object" || Array.isArray(saved) || Object.keys(saved).some(key => !["proposalId", "profileId", "profileVersion", "definition", "createdAt"].includes(key)) || typeof saved.createdAt !== "string" || !Number.isFinite(Date.parse(saved.createdAt))) reject("STORE_CORRUPT", "已保存页面的来源记录无效");
+      const { createdAt, ...input } = saved; const proposal = validatePageProposal(input);
+      if (key !== `page/${proposal.proposalId}` || !this.index.profiles[proposal.profileId]) reject("STORE_CORRUPT", "已保存页面的岗位或提案索引无效");
+      pages.push({ ...proposal, createdAt });
+    }
+    return pages;
+  }
   async refresh(): Promise<void> {
     this.index = await this.repository.loadIndex(); const profileKey = this.index.profiles[this.index.activeProfileId]; if (!profileKey || !this.index.companyKey) reject("STORE_CORRUPT", "工作台配置索引缺失");
     const profile = validateProfile((await this.repository.readObject<ProfileVersion>(profileKey)).profile); const company = validateCompany((await this.repository.readObject<CompanyVersion>(this.index.companyKey)).company);
@@ -52,7 +63,9 @@ export class EmployeeController {
     for (const reference of Object.values(this.index.records)) if (reference.profileId === profile.id) records.push((await this.repository.readObject<RecordVersion>(reference.key)).record);
     for (const key of this.index.reports) { const report = await this.repository.readObject<EmployeeReport>(key); if (report.profileId === profile.id) reports.push(report); }
     for (const key of this.index.audits) audit.push(await this.repository.readObject<AuditEvent>(key));
-    this.state = { revision: this.index.revision, profile, availableProfiles, company, sources, records, reports, audit, passwordConfigured: !!this.index.guardKey, developerUnlocked: !!this.unlockedGuardKey, storage: await this.repository.storageStats() }; this.emit();
+    const defaults = getDefaultPages(profile);
+    const customPages = (await this.savedPages()).filter(page => page.profileId === profile.id).map(page => validateHtmlPage(page.definition, profile));
+    this.state = { revision: this.index.revision, profile, profileVersion: profileKey, dashboard: defaults.dashboard, pages: [...defaults.pages, ...customPages], availableProfiles, company, sources, records, reports, audit, passwordConfigured: !!this.index.guardKey, developerUnlocked: !!this.unlockedGuardKey, storage: await this.repository.storageStats() }; this.emit();
   }
   private action<T>(perform: () => Promise<T>): Promise<T> {
     const result = this.tail.then(async () => { await this.refresh(); try { const value = await perform(); await this.refresh(); return value; } catch (error) { await this.refresh(); throw error; } }); this.tail = result.catch(() => undefined); return result;
@@ -110,10 +123,30 @@ export class EmployeeController {
   lock(): void { this.unlockedGuardKey = undefined; if (this.state) { this.state.developerUnlocked = false; this.emit(); } }
   saveProfile(input: EmployeeProfile): Promise<void> { return this.action(async () => { this.requireUnlocked(); const profile = validateProfile(input); validateScopedCss(profile.ui.css);
     const previousKey = this.index.profiles[profile.id]; if (previousKey) { const previous = (await this.repository.readObject<ProfileVersion>(previousKey)).profile; if (schemaIdentity(previous) !== schemaIdentity(profile) && Object.values(this.index.records).some(record => record.profileId === profile.id)) reject("SCHEMA_IN_USE", "已有记录的岗位不能更改字段结构，请使用新的岗位ID"); }
+    const defaults = getDefaultPages(profile); const ids = new Set(defaults.pages.map(page => page.id)); const titles = new Set([defaults.dashboard.title.trim(), ...defaults.pages.map(page => page.title.trim())]);
+    for (const saved of await this.savedPages()) if (saved.profileId === profile.id) { const page = validateHtmlPage(saved.definition, profile); if (ids.has(page.id) || titles.has(page.title.trim())) reject("PAGE_COLLISION", "岗位配置与已保存页面的ID或名称冲突"); ids.add(page.id); titles.add(page.title.trim()); }
     const key = `profile/${profile.id}/${this.id()}`; await this.publish([{ key, value: { profile, ...(previousKey ? { previousKey } : {}) } }], index => { this.requireUnlocked(index); return { ...index, activeProfileId: profile.id, profiles: { ...index.profiles, [profile.id]: key } }; }, "profile.edit", profile.id, "保存岗位配置；新Agent会话采用新配置"); }); }
   switchProfile(id: string): Promise<void> { return this.action(async () => { this.requireUnlocked(); if (!this.index.profiles[id]) reject("PROFILE_NOT_FOUND", "未找到已保存的岗位配置"); await this.publish([], index => { this.requireUnlocked(index); return { ...index, activeProfileId: id }; }, "profile.switch", id, "切换岗位，保留既有原件和记录"); }); }
   importProfile(json: string): Promise<void> { if (new TextEncoder().encode(json).length > LIMITS.profileBytes) return Promise.reject(new Error("岗位配置文件超出64 KiB")); let value: unknown; try { value = JSON.parse(json); } catch { return Promise.reject(new Error("岗位配置文件不是有效JSON")); } return this.saveProfile(validateProfile(value)); }
   exportProfile(): string { this.requireUnlocked(); return JSON.stringify(validateProfile(this.state.profile), null, 2); }
+  confirmPageProposal(input: EmployeePageProposal): Promise<EmployeeSavedPage> { return this.action(async () => {
+    const proposal = validatePageProposal(input); const pages = await this.savedPages(); const existing = pages.find(page => page.proposalId === proposal.proposalId);
+    if (existing) {
+      const { createdAt: _at, ...savedProposal } = existing;
+      if (JSON.stringify(savedProposal) !== JSON.stringify(proposal)) reject("PAGE_PROPOSAL_CONFLICT", "同一提案ID不能替换已保存的页面");
+      return existing;
+    }
+    if (proposal.profileId !== this.state.profile.id || proposal.profileVersion !== this.state.profileVersion) reject("PAGE_PROPOSAL_STALE", "岗位配置已变更，请重新生成页面提案");
+    const definition = validateHtmlPage(proposal.definition, this.state.profile);
+    if (this.state.pages.some(page => page.id === definition.id || page.title.trim() === definition.title.trim()) || definition.title.trim() === this.state.dashboard.title.trim()) reject("PAGE_COLLISION", "页面ID或名称已存在，请使用新名称");
+    if (pages.length >= LIMITS.customPages || pages.filter(page => page.profileId === proposal.profileId).length >= LIMITS.customPagesPerProfile) reject("PAGE_LIMIT", "每个岗位最多20个自定义页面，全库最多100个");
+    const saved: EmployeeSavedPage = { ...proposal, definition, createdAt: this.now() }; const key = `page/${proposal.proposalId}`;
+    await this.publish([{ key, value: saved }], index => {
+      if (index.activeProfileId !== proposal.profileId || index.profiles[proposal.profileId] !== proposal.profileVersion) reject("PAGE_PROPOSAL_STALE", "岗位配置已变更，请重新生成页面提案");
+      return { ...index, pages: [...(index.pages ?? []), key] };
+    }, "page.create", definition.id, `确认新增页面${definition.title}；保留提案${proposal.proposalId}与岗位配置来源`);
+    return saved;
+  }); }
   saveReport(input: SaveReportInput): Promise<EmployeeReport> { return this.action(async () => {
     if (input.basedOnRevision !== undefined) {
       if (!Number.isSafeInteger(input.basedOnRevision) || input.basedOnRevision < 0) reject("REPORT_INVALID", "报表依据版本无效");

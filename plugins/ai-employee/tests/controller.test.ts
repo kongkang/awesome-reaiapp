@@ -3,6 +3,8 @@ import { EmployeeController } from "../src/controller";
 import { EmployeeRepository } from "../src/repository";
 import { FINANCE_PROFILE, HR_PROFILE } from "../src/profiles";
 import { MemoryStore } from "./repository.test";
+import { createPageProposal } from "../src/domain";
+import { INDEX_KEY } from "../src/repository";
 
 const csv = "日期,收支,对方,金额,说明\n2026-10-08,收入,演示客户,100.25,服务费\n2026-10-08,支出,演示供应商,20.10,办公用品\n";
 async function fixture(store = new MemoryStore()) { const controller = new EmployeeController(new EmployeeRepository(store), { defaultProfile: FINANCE_PROFILE }); await controller.init(); return { controller, store }; }
@@ -109,5 +111,119 @@ describe("three-stage employee workflow", () => {
     const latestRevision = controller.snapshot().revision;
     const current = await controller.saveReport({ title: "新配置分析", text: "基于当前公司要求", basedOnRevision: latestRevision });
     expect(current.dataRevision).toBe(latestRevision);
+  });
+});
+
+const customPage = (id = "invoice-check") => ({ id, title: `核对${id}`, html: '<h2>{{company}}</h2><p>{{missing}}</p><div data-binding="rows"></div>', css: "", bindings: [
+  { id: "missing" as const, kind: "count" as const, filters: [{ field: "invoice", operator: "empty" as const }] },
+  { id: "rows" as const, kind: "records" as const, columns: ["date", "counterparty", "invoice"], filters: [{ field: "invoice", operator: "empty" as const }] },
+] });
+describe("confirmed role-isolated HTML pages", () => {
+  test("confirmation persists full immutable definition and provenance without developer unlock", async () => {
+    const { controller, store } = await fixture(); const before = controller.snapshot();
+    const proposal = createPageProposal(customPage(), before, "page-proposal-one");
+    const saved = await controller.confirmPageProposal(proposal);
+    expect(saved).toMatchObject({ proposalId: "page-proposal-one", profileId: "finance", profileVersion: before.profileVersion, definition: customPage() });
+    expect(saved.createdAt).toMatch(/^\d{4}-/);
+    expect(controller.snapshot().pages.find(page => page.id === "invoice-check")).toEqual(customPage());
+    expect(controller.snapshot().storage.orphanCount).toBe(0);
+    expect(store.values.get("page/page-proposal-one")).toEqual(saved);
+    const reopened = (await fixture(store)).controller;
+    expect(reopened.snapshot().pages.find(page => page.id === "invoice-check")).toEqual(customPage());
+    expect(reopened.snapshot().profileVersion).toBe(before.profileVersion);
+  });
+  test("record and report changes preserve a proposal; profile saves invalidate it", async () => {
+    const { controller } = await fixture(); const proposal = createPageProposal(customPage(), controller.snapshot(), "live-data-proposal");
+    const raw = await controller.appendText({ name: "ledger.csv", text: csv }); await controller.processSource(raw.id);
+    const record = controller.snapshot().records[0]!; await controller.editRecord(record.id, { amount: 12345 }, record.revision);
+    await controller.saveReport({ title: "当前数据", body: "保存分析" });
+    await expect(controller.confirmPageProposal(proposal)).resolves.toMatchObject({ proposalId: proposal.proposalId });
+    const stale = createPageProposal(customPage("stale"), controller.snapshot(), "stale-proposal");
+    await controller.setupPassword("example-password-42"); await controller.saveProfile({ ...FINANCE_PROFILE, name: "更新财务示例" });
+    await expect(controller.confirmPageProposal(stale)).rejects.toThrow("岗位配置");
+    expect(controller.snapshot().pages.some(page => page.id === "stale")).toBe(false);
+  });
+  test("confirmed proposal is idempotent before stale checks but cannot change its payload", async () => {
+    const { controller } = await fixture(); const proposal = createPageProposal(customPage(), controller.snapshot(), "repeated-proposal");
+    const saved = await controller.confirmPageProposal(proposal); const revision = controller.snapshot().revision;
+    expect(await controller.confirmPageProposal(proposal)).toEqual(saved);
+    expect(controller.snapshot().revision).toBe(revision);
+    await controller.setupPassword("example-password-42"); await controller.switchProfile("hr");
+    expect(await controller.confirmPageProposal(proposal)).toEqual(saved);
+    await expect(controller.confirmPageProposal({ ...proposal, definition: { ...proposal.definition, title: "替换" } })).rejects.toThrow();
+    expect(controller.snapshot().pages.some(page => page.id === "invoice-check")).toBe(false);
+    await controller.switchProfile("finance"); expect(controller.snapshot().pages.some(page => page.id === "invoice-check")).toBe(true);
+  });
+  test("role changes, name collisions and field-invalid profiles fail before writing", async () => {
+    const { controller } = await fixture(); const stale = createPageProposal(customPage(), controller.snapshot(), "switched-proposal");
+    await controller.setupPassword("example-password-42"); await controller.switchProfile("hr");
+    await expect(controller.confirmPageProposal(stale)).rejects.toThrow(); await controller.switchProfile("finance");
+    await controller.confirmPageProposal(createPageProposal(customPage(), controller.snapshot(), "first-collision"));
+    await expect(controller.confirmPageProposal(createPageProposal(customPage(), controller.snapshot(), "second-collision"))).rejects.toThrow();
+    const withoutInvoice = { ...FINANCE_PROFILE, ui: { ...FINANCE_PROFILE.ui, dashboard: undefined, pages: undefined }, fields: FINANCE_PROFILE.fields.filter(field => field.key !== "invoice") };
+    await expect(controller.saveProfile(withoutInvoice)).rejects.toThrow();
+    expect(controller.snapshot().storage.orphanCount).toBe(0);
+  });
+  test("legacy indexes retain missing pages in CAS and static exports omit user pages", async () => {
+    const { controller, store } = await fixture(); const oldIndex = structuredClone(store.values.get(INDEX_KEY)) as Record<string, unknown>; delete oldIndex.pages; await store.set(INDEX_KEY, oldIndex);
+    const reopened = (await fixture(store)).controller; expect((store.values.get(INDEX_KEY) as Record<string, unknown>).pages).toBeUndefined();
+    await reopened.confirmPageProposal(createPageProposal(customPage(), reopened.snapshot(), "legacy-cas"));
+    expect((store.values.get(INDEX_KEY) as Record<string, unknown>).pages).toEqual(["page/legacy-cas"]);
+    await reopened.setupPassword("example-password-42");
+    expect(reopened.exportProfile()).not.toContain("legacy-cas"); expect(reopened.exportProfile()).not.toContain("invoice-check");
+    expect(reopened.snapshot().storage.orphanCount).toBe(0); expect(controller.snapshot().profile.id).toBe("finance");
+  });
+  test("legacy builtin pages use public examples read-only and custom fields get generic fallback", async () => {
+    const { controller, store } = await fixture(); const profileKey = controller.snapshot().profileVersion;
+    const version = structuredClone(store.values.get(profileKey)) as { profile: typeof FINANCE_PROFILE }; delete version.profile.ui.dashboard; delete version.profile.ui.pages;
+    await store.set(profileKey, version); const rawIndex = JSON.stringify(store.values.get(INDEX_KEY));
+    const reopened = (await fixture(store)).controller;
+    expect(reopened.snapshot().dashboard.html).toBe(version.profile.ui.html);
+    expect(reopened.snapshot().dashboard.bindings.some(binding => binding.kind === "difference")).toBe(true);
+    expect(reopened.snapshot().pages.length).toBeGreaterThan(0);
+    expect(JSON.stringify(store.values.get(INDEX_KEY))).toBe(rawIndex);
+    expect((store.values.get(profileKey) as typeof version).profile.ui.pages).toBeUndefined();
+    const custom = { ...FINANCE_PROFILE, id: "support", ui: { ...FINANCE_PROFILE.ui, html: "<p>{{unknownOld}}</p>", dashboard: undefined, pages: undefined }, fields: [{ key: "ticket", label: "工单", type: "text" as const, required: true, aliases: [] }] };
+    const generic = new EmployeeController(new EmployeeRepository(new MemoryStore()), { defaultProfile: custom }); await generic.init();
+    expect(generic.snapshot().dashboard.html).not.toContain("unknownOld");
+    expect(generic.snapshot().dashboard.bindings.some(binding => binding.kind === "records" && binding.columns?.includes("ticket"))).toBe(true);
+    expect(generic.snapshot().profile.ui.html).toBe("<p>{{unknownOld}}</p>");
+  });
+  test("custom-page count has a per-role limit and rejects excess without orphan objects", async () => {
+    const { controller } = await fixture();
+    for (let i = 0; i < 20; i++) await controller.confirmPageProposal(createPageProposal(customPage(`check-${i}`), controller.snapshot(), `proposal-${i}`));
+    await expect(controller.confirmPageProposal(createPageProposal(customPage("excess"), controller.snapshot(), "proposal-excess"))).rejects.toThrow();
+    expect(controller.snapshot().pages.filter(page => page.id.startsWith("check-")).length).toBe(20);
+    expect(controller.snapshot().storage.orphanCount).toBe(0);
+  });
+  test("failed index publication cannot expose a page and preserves its residual objects", async () => {
+    const { controller, store } = await fixture(); const proposal = createPageProposal(customPage("cas-page"), controller.snapshot(), "page-cas-failed");
+    const before = controller.snapshot().revision; store.failIndex = true;
+    await expect(controller.confirmPageProposal(proposal)).rejects.toThrow("数据已由另一个页面更新");
+    expect(controller.snapshot().revision).toBe(before);
+    expect(controller.snapshot().pages.some(page => page.id === "cas-page")).toBe(false);
+    expect(store.values.has("page/page-cas-failed")).toBe(true);
+    expect(controller.snapshot().storage.orphanCount).toBe(2);
+    store.failIndex = false; const reopened = (await fixture(store)).controller;
+    expect(reopened.snapshot().pages.some(page => page.id === "cas-page")).toBe(false);
+  });
+  test("changing default pages cannot collide with a saved page or erase its bindings", async () => {
+    const { controller } = await fixture();
+    await controller.confirmPageProposal(createPageProposal(customPage(), controller.snapshot(), "preserved-custom-page"));
+    await controller.setupPassword("example-password-42"); const before = controller.snapshot().profileVersion;
+    await expect(controller.saveProfile({ ...FINANCE_PROFILE, ui: { ...FINANCE_PROFILE.ui, pages: [...FINANCE_PROFILE.ui.pages!, customPage()] } })).rejects.toThrow("冲突");
+    expect(controller.snapshot().profileVersion).toBe(before);
+    expect(controller.snapshot().pages.find(page => page.id === "invoice-check")).toEqual(customPage());
+    expect(controller.snapshot().storage.orphanCount).toBe(0);
+  });
+  test("mixed money and count differences fail before creating a page or audit", async () => {
+    const { controller, store } = await fixture(); const before = controller.snapshot(); const keys = [...store.values.keys()];
+    const definition = { id: "invalid-unit", title: "错误差额", html: "<p>{{net}}</p>", css: "", bindings: [
+      { id: "total", kind: "sum" as const, field: "amount" }, { id: "counted", kind: "count" as const }, { id: "net", kind: "difference" as const, left: "total", right: "counted" },
+    ] };
+    await expect(controller.confirmPageProposal({ proposalId: "invalid-unit-proposal", profileId: before.profile.id, profileVersion: before.profileVersion, definition })).rejects.toThrow("单位");
+    expect(controller.snapshot().revision).toBe(before.revision);
+    expect([...store.values.keys()]).toEqual(keys);
+    expect(controller.snapshot().pages.some(page => page.id === definition.id)).toBe(false);
   });
 });

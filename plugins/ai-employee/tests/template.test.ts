@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (typeof document === 'undefined') GlobalRegistrator.register();
-import { renderSafeTemplate, applyScopedCss, validateScopedCss } from '../src/template';
+import { renderSafeTemplate, applyScopedCss, validateScopedCss, validatePageMarkup } from '../src/template';
 
 describe('developer page template boundary', () => {
   test('data cannot become HTML and active elements are removed', () => {
@@ -32,4 +32,17 @@ describe('developer page template boundary', () => {
     }
     expect(validateScopedCss('.summary > p.value, h2.title { color: red; }').length).toBe(1);
   });
+});
+
+test('page bindings are declared empty slots and scalar values stay outside attributes',()=>{
+  const options={scalarIds:['total'],listIds:['rows']};
+  expect(()=>validatePageMarkup('<h3>{{total}}</h3><div class="table" data-binding="rows"></div>',options)).not.toThrow();
+  for(const html of ['<p class="{{total}}">x</p>','<div data-binding="unknown"></div>','<span data-binding="rows"></span>','<div data-binding="rows"><p>hidden</p></div>','<p>{{missing}}</p>','<div data-binding="rows"></div><div data-binding="rows"></div>']) {
+    expect(()=>validatePageMarkup(html,options)).toThrow();
+  }
+  const root=document.createElement('div');
+  renderSafeTemplate(root,'<p>{{total}}</p><div data-binding="rows"></div><div data-binding="unknown"></div>',{total:'<img src=x>'},{listIds:['rows']});
+  expect(root.querySelector('p')?.textContent).toBe('<img src=x>');
+  expect(root.querySelectorAll('[data-binding]').length).toBe(1);
+  expect(root.querySelector('[data-binding="rows"]')).not.toBeNull();
 });

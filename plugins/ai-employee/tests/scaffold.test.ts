@@ -117,9 +117,9 @@ describe("public plugin scaffold", () => {
     const root = document.createElement("div"); document.body.append(root);
     const view = mountEmployee(root, { controller, agent, appId, version: "0.1.0" });
     try {
-      expect(root.textContent).toContain("AI 客户支持专员");
-      expect(root.querySelector("[data-profile-preview]")?.textContent).toContain("记录 1");
-      root.querySelector<HTMLButtonElement>('[data-page="records"]')!.click();
+      expect(root.querySelector(".ae-sidebar")?.textContent).toContain("客户支持工作台");
+      expect(root.querySelector("[data-html-page]")?.textContent).toContain("记录 1");
+      root.querySelector<HTMLButtonElement>('[data-page="work-board"]')!.click();
       expect(root.querySelector("table")?.textContent).toContain("工单号");
       expect(root.querySelector("table")?.textContent).toContain("T-001");
       root.querySelector<HTMLButtonElement>('[data-page="sources"]')!.click();

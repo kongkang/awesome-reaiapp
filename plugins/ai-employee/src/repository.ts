@@ -1,6 +1,6 @@
 import { clone, jsonBytes, LIMITS, reject, type StorageStats } from "./domain";
 export interface StoreLike { get<T = unknown>(key: string): Promise<T | undefined>; set(key: string, value: unknown): Promise<void>; compareAndSet(key: string, expected: unknown, value: unknown): Promise<boolean>; keys(): Promise<string[]> }
-export interface RepositoryIndex { formatVersion: 1; revision: number; activeProfileId: string; profiles: Record<string, string>; companyKey: string; guardKey?: string; sources: string[]; records: Record<string, { key: string; revision: number; profileId: string }>; reports: string[]; audits: string[]; processed: Record<string, string[]> }
+export interface RepositoryIndex { formatVersion: 1; revision: number; activeProfileId: string; profiles: Record<string, string>; companyKey: string; guardKey?: string; sources: string[]; records: Record<string, { key: string; revision: number; profileId: string }>; reports: string[]; pages?: string[]; audits: string[]; processed: Record<string, string[]> }
 export interface ImmutableObject { key: string; value: unknown }
 export const INDEX_KEY = "index-v1";
 function emptyIndex(): RepositoryIndex { return { formatVersion: 1, revision: 0, activeProfileId: "", profiles: {}, companyKey: "", sources: [], records: {}, reports: [], audits: [], processed: {} }; }
@@ -8,6 +8,7 @@ function validIndex(input: unknown): RepositoryIndex {
   if (!input || typeof input !== "object" || (input as RepositoryIndex).formatVersion !== 1 || !Number.isSafeInteger((input as RepositoryIndex).revision)) reject("STORE_CORRUPT", "数据索引无效，请保留原数据并联系开发者");
   const value = input as RepositoryIndex;
   if (!value.profiles || !value.records || !value.processed || !Array.isArray(value.sources) || !Array.isArray(value.reports) || !Array.isArray(value.audits) || typeof value.companyKey !== "string") reject("STORE_CORRUPT", "数据索引缺少必要字段");
+  if (value.pages !== undefined && (!Array.isArray(value.pages) || value.pages.some(key => typeof key !== "string" || !/^page\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$/.test(key) || key.includes("..")) || new Set(value.pages).size !== value.pages.length)) reject("STORE_CORRUPT", "页面索引无效");
   return clone(value);
 }
 export class EmployeeRepository {
@@ -43,7 +44,7 @@ export class EmployeeRepository {
     return clone(this.cached.get(key)) as T;
   }
   private reachable(): Set<string> {
-    const active = new Set<string>([INDEX_KEY, this.index.companyKey, ...Object.values(this.index.profiles), ...this.index.sources.map(id => `raw/${id}`), ...this.index.reports, ...this.index.audits, ...Object.values(this.index.records).map(ref => ref.key)]);
+    const active = new Set<string>([INDEX_KEY, this.index.companyKey, ...Object.values(this.index.profiles), ...this.index.sources.map(id => `raw/${id}`), ...this.index.reports, ...(this.index.pages ?? []), ...this.index.audits, ...Object.values(this.index.records).map(ref => ref.key)]);
     if (this.index.guardKey) active.add(this.index.guardKey);
     // Version objects retain their prior versions through previousKey.
     const pending = [...active]; while (pending.length) { const value = this.cached.get(pending.pop()!); if (value && typeof value === "object") { const previous = (value as { previousKey?: unknown }).previousKey; if (typeof previous === "string" && !active.has(previous)) { active.add(previous); pending.push(previous); } } }
@@ -57,7 +58,7 @@ export class EmployeeRepository {
   commit(mutate: (index: RepositoryIndex) => { index: RepositoryIndex; objects: ImmutableObject[] }): Promise<RepositoryIndex> {
     const operation = this.tail.then(async () => {
       const expected = await this.loadIndex(); await this.discover(); const transaction = mutate(clone(expected)); const next = validIndex({ ...transaction.index, revision: expected.revision + 1 });
-      if (next.sources.length > LIMITS.sources || Object.keys(next.records).length > LIMITS.records || next.reports.length > LIMITS.reports) reject("DATA_LIMIT", "资料、记录或报表数量达到Demo上限");
+      if (next.sources.length > LIMITS.sources || Object.keys(next.records).length > LIMITS.records || next.reports.length > LIMITS.reports || (next.pages?.length ?? 0) > LIMITS.customPages) reject("DATA_LIMIT", "资料、记录、报表或页面数量达到Demo上限");
       if (jsonBytes(next) > LIMITS.valueBytes) reject("VALUE_LIMIT", "数据索引超出256 KiB，请生成独立岗位插件");
       const newObjects = new Map<string, unknown>();
       for (const object of transaction.objects) {

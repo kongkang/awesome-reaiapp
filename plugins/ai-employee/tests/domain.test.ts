@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cleanSource, createRawSource, LIMITS, parseMoney, validateProfile, validateRecordValues } from "../src/domain";
+import { cleanSource, createRawSource, LIMITS, parseMoney, validateHtmlPage, validateProfile, validateRecordValues, type EmployeeHtmlPage } from "../src/domain";
 import { FINANCE_PROFILE, HR_PROFILE } from "../src/profiles";
 
 describe("immutable sources and role schemas", () => {
@@ -63,5 +63,50 @@ describe("immutable sources and role schemas", () => {
     expect(validateProfile(profile).agent.skills.length).toBe(2);
     profile.agent.skills[1]!.content += "b";
     expect(() => validateProfile(profile)).toThrow("skill正文总量");
+  });
+});
+
+const page = (): EmployeeHtmlPage => ({ id: "invoice-check", title: "发票核对", html: '<section><h2>{{company}}</h2><p>{{missing}}</p><div data-binding="rows"></div></section>', css: "", bindings: [
+  { id: "missing", kind: "count", filters: [{ field: "invoice", operator: "empty" }] },
+  { id: "rows", kind: "records", columns: ["counterparty", "invoice"], filters: [{ field: "invoice", operator: "empty" }] },
+] });
+describe("declarative employee HTML pages", () => {
+  test("validates typed bindings and optional static profile pages", () => {
+    expect(validateHtmlPage(page(), FINANCE_PROFILE)).toEqual(page());
+    const profile = { ...FINANCE_PROFILE, ui: { ...FINANCE_PROFILE.ui, dashboard: { ...page(), id: "dashboard", title: "Dashboard" }, pages: [page()] } };
+    expect(validateProfile(profile).ui.pages?.[0]?.id).toBe("invoice-check");
+    expect(() => validateProfile({ ...profile, ui: { ...profile.ui, dashboard: { ...profile.ui.dashboard, id: "custom-dashboard" } } })).toThrow("dashboard");
+  });
+  test("rejects reserved IDs, unknown fields, untyped filters and unknown configuration", () => {
+    for (const id of ["dashboard", "overview", "sources", "records", "reports", "settings"]) expect(() => validateHtmlPage({ ...page(), id }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...page(), bindings: [{ id: "missing", kind: "sum", field: "secret" }] }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...page(), bindings: [{ id: "missing", kind: "count", filters: [{ field: "amount", operator: "gte", value: "12" }] }] }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...page(), private: "secret" }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...page(), bindings: [{ id: "rows", kind: "reports", filters: [] }] }, FINANCE_PROFILE)).toThrow();
+  });
+  test("rejects undeclared placeholders, attribute interpolation and occupied list slots", () => {
+    for (const html of ['<p>{{unknown}}</p>', '<p title="{{company}}">x</p>', '<div data-binding="rows">untrusted child</div>', '<div data-binding="missing"></div>']) expect(() => validateHtmlPage({ ...page(), html }, FINANCE_PROFILE)).toThrow();
+  });
+  test("difference refers to base scalar bindings only", () => {
+    const value = { id: "cash", title: "收支", html: '<p>{{net}}</p>', css: "", bindings: [{ id: "income", kind: "sum", field: "amount" }, { id: "expense", kind: "sum", field: "amount" }, { id: "net", kind: "difference", left: "income", right: "expense" }] };
+    expect(validateHtmlPage(value, FINANCE_PROFILE).bindings[2]?.kind).toBe("difference");
+    expect(() => validateHtmlPage({ ...value, bindings: [...value.bindings, { id: "cycle", kind: "difference", left: "net", right: "income" }] }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...value, bindings: [value.bindings[0], value.bindings[1], { ...value.bindings[2], field: "amount" }] }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...value, bindings: [value.bindings[0], { id: "expense", kind: "count" }, value.bindings[2]] }, FINANCE_PROFILE)).toThrow("单位");
+  });
+  test("bounds page definitions and profile page counts before storage", () => {
+    expect(() => validateHtmlPage({ ...page(), html: '<p>' + "x".repeat(16385) + '</p>' }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...page(), bindings: Array.from({ length: 17 }, (_, i) => ({ id: `metric_${i}`, kind: "count" })) }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateHtmlPage({ ...page(), bindings: [{ id: "missing", kind: "count", filters: Array.from({ length: 9 }, () => ({ field: "invoice", operator: "empty" })) }] }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateProfile({ ...FINANCE_PROFILE, ui: { ...FINANCE_PROFILE.ui, pages: Array.from({ length: 13 }, (_, i) => ({ ...page(), id: `page-${i}`, title: `页面${i}` })) } })).toThrow();
+  });
+  test("the page title cannot impersonate a fixed navigation entry", () => {
+    for (const title of ["Dashboard", "设置", "上传资料", "总体看板", "资料上传"]) expect(() => validateHtmlPage({ ...page(), title }, FINANCE_PROFILE)).toThrow();
+    expect(() => validateProfile({ ...FINANCE_PROFILE, ui: { ...FINANCE_PROFILE.ui, pages: [{ ...page(), title: "Dashboard" }] } })).toThrow();
+  });
+  test("typed comparisons reject invalid dates, numeric contains, null ranges and difference chains", () => {
+    const binding = (field: string, operator: string, value?: unknown) => ({ id: "missing", kind: "count", filters: [{ field, operator, value }] });
+    for (const item of [binding("date", "gte", "2026-02-30"), binding("amount", "contains", "12"), binding("amount", "gte", null), binding("direction", "eq", "未知"), binding("amount", "eq", NaN)]) expect(() => validateHtmlPage({ ...page(), html: "<p>{{missing}}</p>", bindings: [item] }, FINANCE_PROFILE)).toThrow();
+    expect(validateHtmlPage({ ...page(), html: "<p>{{missing}}</p>", bindings: [binding("date", "gte", "2026-10-08")] }, FINANCE_PROFILE).bindings[0]?.filters?.[0]?.value).toBe("2026-10-08");
   });
 });
