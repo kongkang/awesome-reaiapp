@@ -1,5 +1,11 @@
 # ReAI App 平台规范更新日志
 
+## 2026-10-08 · AI 员工三阶段插件最佳实践
+
+- 新增 [AI 员工三阶段范式](ai-employee-pattern-v1.md) 与 `plugins/ai-employee` 本地 Demo，区分原始资料、可修订标准记录和只读 Agent 分析。
+- 记录集中设置、密码解锁开发模式、岗位配置合同与新插件生成入口。静态模板与公司运行数据分开，HTML / CSS 定制保持展示权限边界。
+- 记录规则演示和真实 Agent Service v2 的独立验证路径。平台批准、签名、真实 Host 安装、真实模型、语音与公开发布不从本地 Demo 继承。
+
 ## 2026-10-07 · 对齐附件与离线待审工具说明
 
 - [Agent Service v2](agent-service-v2.md)补齐文本附件的严格 UTF-8 / 带 BOM UTF-16 解码规则，以及 PDF Worker 缓存、握手错误、取消与原有 20 秒文档时限的对应行为。
