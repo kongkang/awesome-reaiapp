@@ -23,6 +23,20 @@ bun run dev
 
 打开开发服务提供的 `preview.html` 地址。它运行与插件共用的界面和业务代码，使用浏览器本地存储。浏览器预览不需要启动 Driver，不代表真实 Host 安装成功。
 
+### 在另一台电脑打开
+
+需要安装 Bun，并检出包含本插件的 PR 分支。保留完整仓库，插件依赖仓库内的共享包，不能只复制本目录。从仓库根目录执行：
+
+```sh
+cd packages
+bun install --frozen-lockfile --ignore-scripts
+cd ../plugins/ai-employee
+bun install --frozen-lockfile --ignore-scripts
+bun run dev
+```
+
+打开 `http://127.0.0.1:4189/preview.html`，保持开发服务运行。关闭终端或停止服务后，页面将无法连接。`localhost` 和 `127.0.0.1` 都指向正在使用的电脑；另一台电脑需要自行启动服务。浏览器资料保存在本机，不随 Git 分支同步。源码 PR 不代表已经部署公开预览网站。
+
 1. 在设置中填写公司名称、展示偏好和岗位的通用配置。
 2. 从左侧底部「上传资料」导入 `assets/sample-finance.csv`，或粘贴相同格式的 CSV / JSON。
 3. 执行整理。打开 Dashboard 与岗位看板，检查实时数据、金额和来源。含无效行的文件不会产生部分标准记录。
